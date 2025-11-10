@@ -1,0 +1,25 @@
+{
+  "name": "tripoint",
+  "version": "1.0.0",
+  "description": "Tripoint - A single-player web game MVP with three characters and simultaneous timers",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "keywords": ["phaser3", "game", "typescript"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.80.1",
+    "howler": "^2.2.4"
+  },
+  "devDependencies": {
+    "@types/howler": "^2.2.11",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
+    "vitest": "^1.1.0"
+  }
+}
