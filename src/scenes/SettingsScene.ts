@@ -160,7 +160,7 @@ export class SettingsScene extends Phaser.Scene {
     });
     valueText.setOrigin(0, 0.5);
     
-    this.input.on('drag', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.GameObject, dragX: number) => {
+    this.input.on('drag', (_pointer: unknown, gameObject: Phaser.GameObjects.GameObject, dragX: number) => {
       if (gameObject === knob) {
         const relativeX = Phaser.Math.Clamp(dragX, 150, 350);
         knob.x = relativeX;

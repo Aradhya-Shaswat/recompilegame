@@ -1,4 +1,3 @@
-import Phaser from 'phaser';
 import { CONFIG } from '../config';
 
 export interface TimerData {

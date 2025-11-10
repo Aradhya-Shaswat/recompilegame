@@ -23,15 +23,15 @@ export class PauseMenu extends Phaser.Scene {
     });
     title.setOrigin(0.5, 0.5);
 
-    const resumeBtn = this.createButton(width / 2, height / 2 - 60, 'RESUME', () => {
+    this.createButton(width / 2, height / 2 - 60, 'RESUME', () => {
       this.resumeGame();
     });
 
-    const restartBtn = this.createButton(width / 2, height / 2 + 20, 'RESTART', () => {
+    this.createButton(width / 2, height / 2 + 20, 'RESTART', () => {
       this.restartGame();
     });
 
-    const mainMenuBtn = this.createButton(width / 2, height / 2 + 100, 'MAIN MENU', () => {
+    this.createButton(width / 2, height / 2 + 100, 'MAIN MENU', () => {
       this.returnToMenu();
     });
 

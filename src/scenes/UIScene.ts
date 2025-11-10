@@ -5,7 +5,6 @@ import { TimerData } from '../systems/TimerSystem';
 export class UIScene extends Phaser.Scene {
   private timerGraphics!: Phaser.GameObjects.Graphics;
   private timerTexts!: Map<number, Phaser.GameObjects.Text>;
-  private minimapGraphics!: Phaser.GameObjects.Graphics;
   private activeCharacterId: number = 1;
   private gameScene!: Phaser.Scene;
   private gameOverContainer?: Phaser.GameObjects.Container;
@@ -21,11 +20,8 @@ export class UIScene extends Phaser.Scene {
   create(): void {
     this.timerGraphics = this.add.graphics();
     this.timerTexts = new Map();
-    this.minimapGraphics = this.add.graphics();
-
-    this.gameScene = this.scene.get('GameScene');
-
-    this.setupEventListeners();
+    
+    this.gameScene = this.scene.get('GameScene');    this.setupEventListeners();
     this.createTimerDisplays();
     this.createInteractPrompt();
     this.createTipBar();
@@ -125,7 +121,7 @@ export class UIScene extends Phaser.Scene {
 
       let displayColor = color;
       if (timer.timeRemaining <= CONFIG.TIMER.LOW_TIME_THRESHOLD) {
-        displayColor = CONFIG.COLORS.WARNING;
+        displayColor = CONFIG.COLORS.WARNING as typeof color;
       }
 
       const radius = CONFIG.UI.TIMER_RADIUS;
@@ -187,22 +183,6 @@ export class UIScene extends Phaser.Scene {
     tipText.setOrigin(0.5, 0.5);
 
     tipText.setStroke('#000000', 3);
-  }
-
-  private createMinimap(): void {
-    const mapWidth = CONFIG.MAP.WIDTH * CONFIG.MAP.TILE_SIZE;
-    const mapHeight = CONFIG.MAP.HEIGHT * CONFIG.MAP.TILE_SIZE;
-    const minimapWidth = mapWidth * CONFIG.UI.MINIMAP_SCALE;
-    const minimapHeight = mapHeight * CONFIG.UI.MINIMAP_SCALE;
-    
-    const x = CONFIG.GAME_WIDTH - minimapWidth - CONFIG.UI.HUD_PADDING;
-    const y = CONFIG.UI.HUD_PADDING;
-
-    const bg = this.add.graphics();
-    bg.fillStyle(0x000000, 0.7);
-    bg.fillRect(x, y, minimapWidth, minimapHeight);
-    bg.lineStyle(2, 0xffffff, 0.5);
-    bg.strokeRect(x, y, minimapWidth, minimapHeight);
   }
 
   private createInteractPrompt(): void {

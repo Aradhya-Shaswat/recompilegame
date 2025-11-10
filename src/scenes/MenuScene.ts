@@ -60,23 +60,23 @@ export class MenuScene extends Phaser.Scene {
     strikethrough.lineBetween(width / 2 + 85, strikeY, width / 2 + 175, strikeY);
     strikethrough.setDepth(100);
 
-    const playButton = this.createButton(width / 2, height / 2 - 40, 'START', () => {
+    this.createButton(width / 2, height / 2 - 40, 'START', () => {
       SceneTransition.glitchTransition(this, 'GameScene', 800, () => {
         this.scene.launch('UIScene');
       });
     });
 
-    const tutorialButton = this.createButton(width / 2, height / 2 + 40, 'TUTORIAL', () => {
+    this.createButton(width / 2, height / 2 + 40, 'TUTORIAL', () => {
       SceneTransition.glitchTransition(this, 'TutorialScene', 800, () => {
         this.scene.launch('UIScene');
       });
     });
 
-    const settingsButton = this.createButton(width / 2, height / 2 + 120, 'SETTINGS', () => {
+    this.createButton(width / 2, height / 2 + 120, 'SETTINGS', () => {
       this.scene.start('SettingsScene');
     });
 
-    const creditsButton = this.createButton(width / 2, height / 2 + 200, 'CREDITS', () => {
+    this.createButton(width / 2, height / 2 + 200, 'CREDITS', () => {
       this.showCredits();
     });
 

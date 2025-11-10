@@ -105,37 +105,6 @@ export class PreloadScene extends Phaser.Scene {
     });
   }
 
-  private createCharacterTextures(): void {
-    const colors = [
-      CONFIG.COLORS.CHAR_1,
-      CONFIG.COLORS.CHAR_2,
-      CONFIG.COLORS.CHAR_3
-    ];
-
-    colors.forEach((color, index) => {
-      const key = `character_${index + 1}`;
-      const size = CONFIG.CHARACTER.SIZE;
-      
-      const graphics = this.add.graphics();
-      graphics.fillStyle(color, 1);
-      graphics.fillCircle(size / 2, size / 2, size / 2);
-      
-      graphics.lineStyle(2, 0xffffff, 1);
-      graphics.strokeCircle(size / 2, size / 2, size / 2);
-      
-      const text = this.add.text(size / 2, size / 2, (index + 1).toString(), {
-        fontSize: '16px',
-        color: '#ffffff',
-        fontStyle: 'bold'
-      });
-      text.setOrigin(0.5, 0.5);
-      
-      graphics.generateTexture(key, size, size);
-      text.destroy();
-      graphics.destroy();
-    });
-  }
-
   private createTaskTexture(): void {
     const size = CONFIG.MAP.TILE_SIZE;
     
@@ -151,20 +120,6 @@ export class PreloadScene extends Phaser.Scene {
     graphics.lineBetween(size - 8, 8, 8, size - 8);
     
     graphics.generateTexture('task', size, size);
-    graphics.destroy();
-  }
-
-  private createBackgroundTexture(): void {
-    const tileSize = CONFIG.MAP.TILE_SIZE;
-    
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x1a1a1a, 1);
-    graphics.fillRect(0, 0, tileSize, tileSize);
-    
-    graphics.lineStyle(1, 0x333333, 0.5);
-    graphics.strokeRect(0, 0, tileSize, tileSize);
-    
-    graphics.generateTexture('tile', tileSize, tileSize);
     graphics.destroy();
   }
 }
