@@ -1,13 +1,23 @@
 import { defineConfig } from 'vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
+  plugins: [
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'assets/**/*',
+          dest: 'assets'
+        }
+      ]
+    })
+  ],
   server: {
     port: 5173,
     open: true
   },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
     rollupOptions: {
       output: {
         manualChunks: {
