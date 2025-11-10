@@ -8,6 +8,7 @@ import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
 import { TutorialScene } from './scenes/TutorialScene';
 import { PauseMenu } from './scenes/PauseMenu';
+import { EndCreditsScene } from './scenes/EndCreditsScene';
 import { WireMazeMinigame } from './scenes/WireMazeMinigame';
 import { CardSwipeMinigame } from './scenes/CardSwipeMinigame';
 import { AsteroidShooterMinigame } from './scenes/AsteroidShooterMinigame';
@@ -21,7 +22,7 @@ const config: Phaser.Types.Core.GameConfig = {
   height: CONFIG.GAME_HEIGHT,
   parent: 'game-container',
   backgroundColor: '#000000',
-  scene: [BootScene, PreloadScene, MenuScene, SettingsScene, GameScene, UIScene, TutorialScene, PauseMenu, WireMazeMinigame, CardSwipeMinigame, AsteroidShooterMinigame, MiniGolfMinigame, DinoRunMinigame, TelescopeAlignMinigame],
+  scene: [BootScene, PreloadScene, MenuScene, SettingsScene, GameScene, UIScene, TutorialScene, PauseMenu, EndCreditsScene, WireMazeMinigame, CardSwipeMinigame, AsteroidShooterMinigame, MiniGolfMinigame, DinoRunMinigame, TelescopeAlignMinigame],
   physics: {
     default: 'arcade',
     arcade: {

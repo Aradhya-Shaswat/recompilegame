@@ -541,10 +541,22 @@ export class GameScene extends Phaser.Scene {
       duration: 1000,
       ease: 'Sine.easeInOut'
     });
-    
+
     this.events.emit('victory', {
       tasksCompleted: this.completedTasksCount,
       timeRemaining: this.timerSystem.getAllTimers()
+    });
+
+    this.time.delayedCall(3000, () => {
+      this.cameras.main.fadeOut(1000, 0, 0, 0);
+      
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.stop('UIScene');
+        this.scene.start('EndCreditsScene', {
+          tasksCompleted: this.completedTasksCount,
+          timeRemaining: this.timerSystem.getAllTimers()
+        });
+      });
     });
   }
 

@@ -210,13 +210,13 @@ export class UIScene extends Phaser.Scene {
     const height = CONFIG.GAME_HEIGHT;
 
     this.victoryOverlay = this.add.graphics();
-    this.victoryOverlay.fillStyle(0x000000, 0.85);
+    this.victoryOverlay.fillStyle(0x000000, 0.7);
     this.victoryOverlay.fillRect(0, 0, width, height);
 
     this.victoryContainer = this.add.container(width / 2, height / 2);
 
-    const title = this.add.text(0, -150, 'EXTRACTION SUCCESSFUL', {
-      fontSize: '64px',
+    const title = this.add.text(0, -100, 'EXTRACTION SUCCESSFUL', {
+      fontSize: '48px',
       color: '#00ff00',
       fontStyle: 'bold',
       stroke: '#000000',
@@ -224,49 +224,39 @@ export class UIScene extends Phaser.Scene {
     });
     title.setOrigin(0.5, 0.5);
 
-    const message = this.add.text(0, -50, 
-      `Code Rewritten! Your Team Survived!\n${data.tasksCompleted} patches deployed`, {
-      fontSize: '28px',
+    const message = this.add.text(0, 0, 
+      `Code Rewritten!\n${data.tasksCompleted} patches deployed`, {
+      fontSize: '24px',
       color: '#ffffff',
       align: 'center',
       lineSpacing: 10
     });
     message.setOrigin(0.5, 0.5);
 
-    const stats = this.add.text(0, 50, 
-      'Final Status:\n' +
-      `${CONFIG.CHARACTER.NAMES[0]}: ${data.timeRemaining[0]?.timeRemaining.toFixed(1)}s\n` +
-      `${CONFIG.CHARACTER.NAMES[1]}: ${data.timeRemaining[1]?.timeRemaining.toFixed(1)}s\n` +
-      `${CONFIG.CHARACTER.NAMES[2]}: ${data.timeRemaining[2]?.timeRemaining.toFixed(1)}s`, {
-      fontSize: '20px',
+    const subtitle = this.add.text(0, 80, 'Preparing extraction...', {
+      fontSize: '18px',
       color: '#aaaaaa',
-      align: 'center',
-      lineSpacing: 8
+      align: 'center'
     });
-    stats.setOrigin(0.5, 0.5);
-
-    const menuButton = this.add.text(0, 160, 'Return to Menu', {
-      fontSize: '24px',
-      color: '#ffffff',
-      backgroundColor: '#00CED1',
-      padding: { x: 30, y: 15 }
-    });
-    menuButton.setOrigin(0.5, 0.5);
-    menuButton.setInteractive({ useHandCursor: true });
+    subtitle.setOrigin(0.5, 0.5);
     
-    menuButton.on('pointerdown', () => {
-      this.scene.stop('GameScene');
-      this.scene.stop('UIScene');
-      this.scene.start('MenuScene');
-    });
-    
-    this.victoryContainer.add([title, message, stats, menuButton]);
+    this.victoryContainer.add([title, message, subtitle]);
 
     this.tweens.add({
       targets: title,
       scale: { from: 0, to: 1.2 },
       duration: 500,
       ease: 'Back.easeOut'
+    });
+
+    // Blinking dots animation
+    this.tweens.add({
+      targets: subtitle,
+      alpha: 0.3,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
 
     this.createConfetti(width, height);
