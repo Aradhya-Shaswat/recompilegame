@@ -1,12 +1,17 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
+import { SoundManager } from '../utils/SoundManager';
 
 export class PauseMenu extends Phaser.Scene {
+  private soundManager!: SoundManager;
+  
   constructor() {
     super({ key: 'PauseMenu' });
   }
 
   create(): void {
+    this.soundManager = new SoundManager(this);
+    
     const width = CONFIG.GAME_WIDTH;
     const height = CONFIG.GAME_HEIGHT;
 
@@ -90,7 +95,10 @@ export class PauseMenu extends Phaser.Scene {
       label.setScale(1.0);
     });
 
-    container.on('pointerdown', onClick);
+    container.on('pointerdown', () => {
+      this.soundManager.play('menu-click');
+      onClick();
+    });
 
     return container;
   }

@@ -12,6 +12,9 @@ export class UIScene extends Phaser.Scene {
   private victoryContainer?: Phaser.GameObjects.Container;
   private victoryOverlay?: Phaser.GameObjects.Graphics;
   private interactPrompt?: Phaser.GameObjects.Text;
+  private energyBarBg?: Phaser.GameObjects.Rectangle;
+  private energyBarFill?: Phaser.GameObjects.Rectangle;
+  private energyBarText?: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -23,6 +26,7 @@ export class UIScene extends Phaser.Scene {
     
     this.gameScene = this.scene.get('GameScene');    this.setupEventListeners();
     this.createTimerDisplays();
+    this.createEnergyBar();
     this.createInteractPrompt();
     this.createTipBar();
   }
@@ -35,6 +39,7 @@ export class UIScene extends Phaser.Scene {
       this.gameScene.events.off('proximityChanged');
       this.gameScene.events.off('lowTimeWarning');
       this.gameScene.events.off('victory');
+      this.gameScene.events.off('sprintEnergyUpdated');
     }
 
     if (this.timerTexts) {
@@ -66,6 +71,10 @@ export class UIScene extends Phaser.Scene {
     this.gameScene.events.on('victory', (data: any) => {
       this.showVictory(data);
     });
+
+    this.gameScene.events.on('sprintEnergyUpdated', (data: { energy: number; maxEnergy: number }) => {
+      this.updateEnergyBar(data.energy, data.maxEnergy);
+    });
   }
 
   private createTimerDisplays(): void {
@@ -95,6 +104,48 @@ export class UIScene extends Phaser.Scene {
       
       this.timerTexts.set(charId, text);
     });
+  }
+
+  private createEnergyBar(): void {
+    const energyX = CONFIG.GAME_WIDTH - CONFIG.UI.HUD_PADDING - 52;
+    const energyY = CONFIG.UI.HUD_PADDING + 28;
+
+    const label = this.add.text(energyX, energyY - 28, 'Sprint', {
+      fontSize: '10px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    });
+    label.setOrigin(0.5, 0.5);
+
+    this.energyBarBg = this.add.rectangle(energyX, energyY, 104, 24, 0x333333);
+    this.energyBarBg.setStrokeStyle(2, 0xffffff);
+
+    this.energyBarFill = this.add.rectangle(energyX - 50, energyY, 100, 20, 0x00ff00);
+    this.energyBarFill.setOrigin(0, 0.5);
+
+    this.energyBarText = this.add.text(energyX, energyY + 24, '100%', {
+      fontSize: '12px',
+      color: '#ffffff',
+      fontStyle: 'bold'
+    });
+    this.energyBarText.setOrigin(0.5, 0.5);
+  }
+
+  private updateEnergyBar(energy: number, maxEnergy: number): void {
+    if (!this.energyBarFill || !this.energyBarText) return;
+
+    const energyPercent = energy / maxEnergy;
+    this.energyBarFill.width = 100 * energyPercent;
+
+    if (energyPercent > 0.6) {
+      this.energyBarFill.setFillStyle(0x00ff00);
+    } else if (energyPercent > 0.3) {
+      this.energyBarFill.setFillStyle(0xffaa00);
+    } else {
+      this.energyBarFill.setFillStyle(0xff0000);
+    }
+
+    this.energyBarText.setText(`${Math.floor(energy)}%`);
   }
 
   private updateTimers(timers: TimerData[]): void {
@@ -174,7 +225,7 @@ export class UIScene extends Phaser.Scene {
     barBg.lineBetween(0, height - barHeight, width, height - barHeight);
 
     const tipText = this.add.text(width / 2, height - barHeight / 2, 
-      '[1/2/3] Switch  •  [WASD/Arrows] Move  •  [SPACE] Interact', {
+      '[1/2/3] Switch  •  [WASD/Arrows] Move  •  [SHIFT] Sprint  •  [SPACE] Interact', {
       fontSize: '14px',
       color: '#ffffff',
       fontFamily: 'Courier New, monospace',
@@ -248,8 +299,7 @@ export class UIScene extends Phaser.Scene {
       duration: 500,
       ease: 'Back.easeOut'
     });
-
-    // Blinking dots animation
+    
     this.tweens.add({
       targets: subtitle,
       alpha: 0.3,

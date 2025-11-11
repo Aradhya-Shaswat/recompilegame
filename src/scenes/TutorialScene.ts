@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CONFIG, SPAWN_POSITIONS } from '../config';
+import { CONFIG } from '../config';
 import { Character } from '../entities/Character';
 import { Task } from '../entities/Task';
 import { TimerSystem } from '../systems/TimerSystem';
@@ -22,6 +22,7 @@ export class TutorialScene extends Phaser.Scene {
   private wasdKeys!: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key };
   private numberKeys!: Map<number, Phaser.Input.Keyboard.Key>;
   private spaceKey!: Phaser.Input.Keyboard.Key;
+  private shiftKey!: Phaser.Input.Keyboard.Key;
   private backgrounds: Phaser.GameObjects.TileSprite[] = [];
   private isMinigameActive: boolean = false;
   private tutorialStepIndex: number = 0;
@@ -32,9 +33,10 @@ export class TutorialScene extends Phaser.Scene {
   private highlightGraphics?: Phaser.GameObjects.Graphics;
   private continueButton?: Phaser.GameObjects.Container;
   private hasMovedCharacter: boolean = false;
-  private hasSwitchedCharacter: boolean = false;
   private hasCompletedTask: boolean = false;
   private nearbyTaskId: number | null = null;
+  private conditionMetTime: number = 0;
+  private awaitingCondition: boolean = false;
 
   constructor() {
     super({ key: 'TutorialScene' });
@@ -47,15 +49,10 @@ export class TutorialScene extends Phaser.Scene {
     this.taskSystem = new TaskSystem();
 
     this.createBackground();
-
     this.createCharacters();
-
     this.createTutorialTasks();
-
     this.setupInput();
-
     this.setupEventHandlers();
-
     this.createTutorialUI();
 
     const enterKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
@@ -79,53 +76,57 @@ export class TutorialScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     this.timerSystem.update(delta * 0.3, this.activeCharacterId); 
 
-    if (this.tutorialStepIndex >= 2) {
+    if (this.tutorialStepIndex >= 1 && this.tutorialStepIndex < this.tutorialSteps.length) {
       this.updateCharacterMovement(delta);
     }
 
     this.checkTaskProximity();
     this.events.emit('timersUpdated', this.timerSystem.getAllTimers());
-    this.checkStepCondition();
+    
+    if (!this.isMinigameActive) {
+      this.checkStepCondition();
+    }
   }
 
   private setupTutorialSteps(): void {
     this.tutorialSteps = [
       {
-        title: 'EMERGENCY: SYSTEM BREACH DETECTED',
-        message: 'Your dev team has been pulled into the game code during final testing. The brutal final level—designed to have ZERO survivors—is now their reality. You\'re their only hope from outside the system.',
+        title: 'WELCOME TO THE TUTORIAL',
+        message: 'You need to complete tasks to survive. Each task is a minigame. Complete them to win. Let us show you how each one works.',
       },
       {
-        title: 'THE SITUATION',
-        message: 'Three teammates are trapped in parallel instances of the level. Each character has a timer counting down to their "scripted death." Your job: rewrite the code in real-time to keep them alive.',
-      },
-      {
-        title: 'MOVEMENT CONTROLS',
-        message: 'Use WASD or Arrow Keys to move your active character. Each character exists in their own isolated zone—you can\'t see the others, but their timers are ticking. Try moving now!',
+        title: 'BASIC CONTROLS',
+        message: 'Use WASD or Arrow Keys to move. Hold SHIFT to sprint but watch your energy! Press SPACE near a task to start it. Try moving around now.',
         condition: () => this.hasMovedCharacter,
       },
       {
-        title: 'SWITCHING CHARACTERS',
-        message: 'Press 1, 2, or 3 to switch between your trapped teammates. You can only control one at a time. The others\' timers keep ticking while you\'re away. Try switching now!',
-        condition: () => this.hasSwitchedCharacter,
+        title: 'WIRE MAZE TASK',
+        message: 'Walk to the GREEN task square. Use WASD or arrow keys.',
       },
       {
-        title: 'DEPLOYING CODE PATCHES',
-        message: 'Green task markers are your "backdoors"—code patches you can deploy to buy time. Get close to a task and press SPACE to execute the patch. This requires solving a quick minigame.',
-        highlight: { x: 300, y: 300, radius: 50 },
+        title: 'CARD SWIPE TASK',
+        message: 'Walk to the ORANGE task square. Click and drag the card through the reader. Match the perfect speed shown in the animation.',
       },
       {
-        title: 'COMPLETING TASKS',
-        message: 'Move to the highlighted task and press SPACE. Complete the minigame to deploy the patch. Each successful patch brings you closer to extracting your team safely.',
-        highlight: { x: 300, y: 300, radius: 50 },
+        title: 'ASTEROID SHOOTER TASK',
+        message: 'Walk to the PINK task square. Click to shoot and destroy 10 asteroids. Aim carefully and move fast.',
+      },
+      {
+        title: 'MINI GOLF TASK',
+        message: 'Walk to the CYAN task square. Click the ball to aim. Scroll wheel for power. Release to shoot. Get it in the hole in 5 shots.',
+      },
+      {
+        title: 'DINO RUN TASK',
+        message: 'Walk to the YELLOW task square. Press SPACE to jump over obstacles. One hit and you start over. Reach the end to win.',
+      },
+      {
+        title: 'TELESCOPE ALIGN TASK',
+        message: 'Walk to the PURPLE task square. Click and drag the handle to match the green dot. Hold steady for 3 seconds to complete.',
         condition: () => this.hasCompletedTask,
       },
       {
-        title: 'TIME MANAGEMENT IS CRITICAL',
-        message: 'Watch all three timers carefully. If ANY character\'s timer reaches zero, they\'re written out of the code—permanently. Manage your time wisely. Prioritize who needs help most.',
-      },
-      {
-        title: 'THE MISSION',
-        message: 'Complete enough code patches to override the level\'s kill script and extract your team. The game was designed to be unbeatable. Prove it wrong. Good luck, developer.',
+        title: 'READY TO PLAY',
+        message: 'You now know all the tasks. In the real game you must manage timers and complete 12 tasks to win. Good luck!',
       },
     ];
   }
@@ -143,15 +144,41 @@ export class TutorialScene extends Phaser.Scene {
 
   private createCharacters(): void {
     this.characters = new Map();
+    
+    const zoneWidth = CONFIG.MAP.WIDTH * CONFIG.MAP.TILE_SIZE;
+    const zoneHeight = CONFIG.MAP.HEIGHT * CONFIG.MAP.TILE_SIZE;
 
     for (let i = 1; i <= 2; i++) {
-      const spawnData = SPAWN_POSITIONS[i - 1];
       const char = new Character(
         this,
-        spawnData.x * CONFIG.MAP.TILE_SIZE,
-        spawnData.y * CONFIG.MAP.TILE_SIZE,
+        zoneWidth * 0.05,
+        zoneHeight * 0.35,
         i
       );
+
+      this.physics.add.existing(char);
+      (char.body as Phaser.Physics.Arcade.Body).setCollideWorldBounds(false);
+      (char.body as Phaser.Physics.Arcade.Body).setSize(220, 280);
+      
+      char.update = (_delta: number) => {
+        const isMoving = (char as any).velocityX !== 0 || (char as any).velocityY !== 0;
+        const currentAnim = char.anims.currentAnim?.key;
+        const idleKey = `character_${i}_idle`;
+        const walkKey = `character_${i}_walk`;
+        
+        if ((char as any).velocityX < 0) {
+          char.setFlipX(true);
+        } else if ((char as any).velocityX > 0) {
+          char.setFlipX(false);
+        }
+        
+        if (isMoving && currentAnim !== walkKey) {
+          char.play(walkKey);
+        } else if (!isMoving && currentAnim !== idleKey) {
+          char.play(idleKey);
+        }
+      };
+      
       this.characters.set(i, char);
 
       if (i !== this.activeCharacterId) {
@@ -163,15 +190,25 @@ export class TutorialScene extends Phaser.Scene {
   private createTutorialTasks(): void {
     const zoneWidth = CONFIG.MAP.WIDTH * CONFIG.MAP.TILE_SIZE;
     const zoneHeight = CONFIG.MAP.HEIGHT * CONFIG.MAP.TILE_SIZE;
-    const margin = 80;
     
-    const tutorialTaskTypes: Array<'wire' | 'card' | 'telescope'> = ['wire', 'card', 'telescope'];
+    const tutorialTaskTypes: Array<'wire' | 'card' | 'asteroid' | 'golf' | 'dino' | 'telescope'> = [
+      'wire', 'card', 'asteroid', 'golf', 'dino', 'telescope'
+    ];
 
-    tutorialTaskTypes.forEach((type) => {
-      const randomX = margin + Math.random() * (zoneWidth - margin * 2);
-      const randomY = margin + Math.random() * (zoneHeight - margin * 2);
+    const positions = [
+      { x: zoneWidth * 0.15, y: zoneHeight * 0.30 },  
+      { x: zoneWidth * 0.30, y: zoneHeight * 0.35 },  
+      { x: zoneWidth * 0.45, y: zoneHeight * 0.30 },  
+      { x: zoneWidth * 0.60, y: zoneHeight * 0.35 },  
+      { x: zoneWidth * 0.75, y: zoneHeight * 0.30 },  
+      { x: zoneWidth * 0.90, y: zoneHeight * 0.35 },  
+    ];
+
+    tutorialTaskTypes.forEach((type, index) => {
+      const pos = positions[index];
       
-      const task = new Task(this, randomX, randomY, type);
+      const task = new Task(this, pos.x, pos.y, type);
+      task.setDepth(10);
       this.taskSystem.addTask(task);
 
       this.tweens.add({
@@ -193,6 +230,79 @@ export class TutorialScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
         delay: Math.random() * 500
       });
+    });
+
+    this.createPathwayWalls(zoneWidth, zoneHeight);
+  }
+
+  private createPathwayWalls(zoneWidth: number, zoneHeight: number): void {
+    const wallGraphics = this.add.graphics();
+    wallGraphics.lineStyle(3, 0x444444, 1);
+    wallGraphics.fillStyle(0x222222, 0.8);
+    
+    const pathY = zoneHeight * 0.325; 
+    const pathHeight = 150; 
+    
+    wallGraphics.fillRect(0, 0, zoneWidth, pathY - pathHeight / 2);
+
+    wallGraphics.fillRect(0, pathY + pathHeight / 2, zoneWidth, zoneHeight * 0.45);
+
+    wallGraphics.lineStyle(6, 0x00FF00, 0.6);
+    wallGraphics.strokeRect(0, pathY - pathHeight / 2, zoneWidth, pathHeight);
+
+    wallGraphics.lineStyle(3, 0x00FF00, 1);
+    wallGraphics.strokeRect(2, pathY - pathHeight / 2 + 2, zoneWidth - 4, pathHeight - 4);
+
+    wallGraphics.lineStyle(4, 0x008800, 0.8);
+    wallGraphics.strokeRect(0, 0, zoneWidth, zoneHeight);
+    
+    wallGraphics.setDepth(5);
+
+    const topWallBody = this.add.rectangle(
+      zoneWidth / 2, 
+      (pathY - pathHeight / 2) / 2, 
+      zoneWidth, 
+      pathY - pathHeight / 2, 
+      0x000000, 
+      0
+    );
+    this.physics.add.existing(topWallBody, true);
+
+    const bottomWallBody = this.add.rectangle(
+      zoneWidth / 2, 
+      pathY + pathHeight / 2 + (zoneHeight * 0.45) / 2, 
+      zoneWidth, 
+      zoneHeight * 0.45, 
+      0x000000, 
+      0
+    );
+    this.physics.add.existing(bottomWallBody, true);
+
+    const leftWallBody = this.add.rectangle(
+      0,
+      zoneHeight / 2,
+      10,
+      zoneHeight,
+      0x000000,
+      0
+    );
+    this.physics.add.existing(leftWallBody, true);
+
+    const rightWallBody = this.add.rectangle(
+      zoneWidth,
+      zoneHeight / 2,
+      10,
+      zoneHeight,
+      0x000000,
+      0
+    );
+    this.physics.add.existing(rightWallBody, true);
+
+    this.characters.forEach(char => {
+      this.physics.add.collider(char, topWallBody);
+      this.physics.add.collider(char, bottomWallBody);
+      this.physics.add.collider(char, leftWallBody);
+      this.physics.add.collider(char, rightWallBody);
     });
   }
 
@@ -221,6 +331,8 @@ export class TutorialScene extends Phaser.Scene {
         this.startMinigame(this.nearbyTaskId);
       }
     });
+
+    this.shiftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
   }
 
   private setupEventHandlers(): void {
@@ -258,14 +370,25 @@ export class TutorialScene extends Phaser.Scene {
       this.hasMovedCharacter = true;
     }
 
+    const speed = CONFIG.CHARACTER.SPEED;
+    
+    if (this.shiftKey.isDown && (velocityX !== 0 || velocityY !== 0)) {
+      const sprintMultiplier = 1.5;
+      velocityX *= sprintMultiplier;
+      velocityY *= sprintMultiplier;
+    }
+
+    const body = activeChar.body as Phaser.Physics.Arcade.Body;
+    if (body) {
+      body.setVelocity(velocityX * speed, velocityY * speed);
+    }
+
     activeChar.setVelocity(velocityX, velocityY);
     activeChar.update(delta);
   }
 
   private switchCharacter(id: number): void {
     if (id === this.activeCharacterId || !this.characters.has(id)) return;
-
-    this.hasSwitchedCharacter = true;
 
     const currentChar = this.characters.get(this.activeCharacterId);
     if (currentChar) {
@@ -321,12 +444,26 @@ export class TutorialScene extends Phaser.Scene {
     const taskType = this.taskSystem.getTaskType(taskId);
     let minigameSceneKey: string;
 
-    if (taskType === 'card') {
-      minigameSceneKey = 'CardSwipeMinigame';
-    } else if (taskType === 'telescope') {
-      minigameSceneKey = 'TelescopeAlignMinigame';
-    } else {
-      minigameSceneKey = 'WireMazeMinigame';
+    switch (taskType) {
+      case 'card':
+        minigameSceneKey = 'CardSwipeMinigame';
+        break;
+      case 'telescope':
+        minigameSceneKey = 'TelescopeAlignMinigame';
+        break;
+      case 'asteroid':
+        minigameSceneKey = 'AsteroidShooterMinigame';
+        break;
+      case 'golf':
+        minigameSceneKey = 'MiniGolfMinigame';
+        break;
+      case 'dino':
+        minigameSceneKey = 'DinoRunMinigame';
+        break;
+      case 'wire':
+      default:
+        minigameSceneKey = 'WireMazeMinigame';
+        break;
     }
 
     this.isMinigameActive = true;
@@ -355,71 +492,85 @@ export class TutorialScene extends Phaser.Scene {
     }
   }
 
+  public cancelMinigame(): void {
+    this.isMinigameActive = false;
+  }
+
   private createTutorialUI(): void {
     const overlay = this.add.graphics();
-    overlay.fillStyle(0x000000, 0.7);
+    overlay.fillStyle(0x000000, 0.8);
     overlay.fillRect(0, 0, CONFIG.GAME_WIDTH, CONFIG.GAME_HEIGHT);
     overlay.setDepth(1000);
 
-    this.tutorialBox = this.add.container(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT - 150);
+    this.tutorialBox = this.add.container(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT - 200);
     this.tutorialBox.setDepth(1001);
 
     const boxBg = this.add.graphics();
-    boxBg.fillStyle(0x0a0a0a, 0.95);
-    boxBg.fillRoundedRect(-450, -100, 900, 200, 15);
-    boxBg.lineStyle(3, 0xFF0000, 1);
-    boxBg.strokeRoundedRect(-450, -100, 900, 200, 15);
+    boxBg.fillStyle(0x0f0f0f, 0.98);
+    boxBg.fillRoundedRect(-470, -110, 940, 220, 20);
+    boxBg.lineStyle(4, 0x00FF00, 0.8);
+    boxBg.strokeRoundedRect(-470, -110, 940, 220, 20);
 
-    this.tutorialTitle = this.add.text(0, -70, '', {
-      fontSize: '28px',
-      color: '#FF0000',
+    this.tutorialTitle = this.add.text(0, -75, '', {
+      fontSize: '20px',
+      color: '#00FF00',
       fontStyle: 'bold',
       align: 'center',
+      fontFamily: '"Press Start 2P", monospace',
     });
     this.tutorialTitle.setOrigin(0.5, 0.5);
+    this.tutorialTitle.setStroke('#000000', 4);
 
-    this.tutorialText = this.add.text(0, 0, '', {
-      fontSize: '18px',
+    this.tutorialText = this.add.text(0, 10, '', {
+      fontSize: '14px',
       color: '#ffffff',
       align: 'center',
-      wordWrap: { width: 850 },
-      lineSpacing: 8,
+      wordWrap: { width: 880 },
+      lineSpacing: 10,
+      fontFamily: '"Press Start 2P", monospace',
     });
     this.tutorialText.setOrigin(0.5, 0.5);
 
     this.tutorialBox.add([boxBg, this.tutorialTitle, this.tutorialText]);
 
-    this.continueButton = this.add.container(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT - 30);
+    this.continueButton = this.add.container(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT - 60);
     this.continueButton.setDepth(1010);
 
     const btnBg = this.add.graphics();
-    btnBg.fillStyle(0xFF0000, 1);
-    btnBg.fillRoundedRect(-80, -20, 160, 40, 8);
+    btnBg.fillStyle(0x00FF00, 1);
+    btnBg.fillRoundedRect(-90, -22, 180, 44, 10);
+    btnBg.lineStyle(2, 0xFFFFFF, 0.8);
+    btnBg.strokeRoundedRect(-90, -22, 180, 44, 10);
 
     const btnText = this.add.text(0, 0, 'CONTINUE', {
-      fontSize: '20px',
-      color: '#ffffff',
+      fontSize: '16px',
+      color: '#000000',
       fontStyle: 'bold',
+      fontFamily: '"Press Start 2P", monospace',
     });
     btnText.setOrigin(0.5, 0.5);
 
     this.continueButton.add([btnBg, btnText]);
     this.continueButton.setInteractive(
-      new Phaser.Geom.Rectangle(-80, -20, 160, 40),
+      new Phaser.Geom.Rectangle(-90, -22, 180, 44),
       Phaser.Geom.Rectangle.Contains
     );
 
     this.continueButton.on('pointerover', () => {
       btnBg.clear();
-      btnBg.fillStyle(0xFF3333, 1);
-      btnBg.fillRoundedRect(-80, -20, 160, 40, 8);
-      btnText.setScale(1.1);
+      btnBg.fillStyle(0x00FF88, 1);
+      btnBg.fillRoundedRect(-90, -22, 180, 44, 10);
+      btnBg.lineStyle(3, 0xFFFFFF, 1);
+      btnBg.strokeRoundedRect(-90, -22, 180, 44, 10);
+      btnText.setScale(1.05);
     });
     
     this.continueButton.on('pointerout', () => {
       btnBg.clear();
-      btnBg.fillStyle(0xFF0000, 1);
-      btnBg.fillRoundedRect(-80, -20, 160, 40, 8);
+      btnBg.fillStyle(0x00FF00, 1);
+      btnBg.fillRoundedRect(-90, -22, 180, 44, 10);
+      btnBg.lineStyle(2, 0xFFFFFF, 0.8);
+      btnBg.strokeRoundedRect(-90, -22, 180, 44, 10);
       btnText.setScale(1.0);
     });
     
@@ -440,10 +591,26 @@ export class TutorialScene extends Phaser.Scene {
 
     if (this.tutorialTitle) {
       this.tutorialTitle.setText(step.title);
+      
+      this.tweens.add({
+        targets: this.tutorialTitle,
+        scale: { from: 0.8, to: 1 },
+        alpha: { from: 0, to: 1 },
+        duration: 300,
+        ease: 'Back.easeOut'
+      });
     }
 
     if (this.tutorialText) {
       this.tutorialText.setText(step.message);
+      
+      this.tweens.add({
+        targets: this.tutorialText,
+        alpha: { from: 0, to: 1 },
+        duration: 400,
+        delay: 150,
+        ease: 'Power2'
+      });
     }
 
     const shouldShowButton = !step.condition || stepIndex === this.tutorialSteps.length - 1;
@@ -451,14 +618,46 @@ export class TutorialScene extends Phaser.Scene {
       this.continueButton.setVisible(shouldShowButton);
       if (shouldShowButton) {
         this.continueButton.setDepth(1003);
+        this.continueButton.setAlpha(0);
+        this.tweens.add({
+          targets: this.continueButton,
+          alpha: 1,
+          duration: 300,
+          delay: 500,
+          ease: 'Power2'
+        });
       }
     }
 
     if (this.highlightGraphics) {
       this.highlightGraphics.clear();
       if (step.highlight) {
-        this.highlightGraphics.lineStyle(4, 0x00FF00, 1);
-        this.highlightGraphics.strokeCircle(step.highlight.x, step.highlight.y, step.highlight.radius);
+        const pulse = this.tweens.addCounter({
+          from: 0,
+          to: 1,
+          duration: 1500,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+          onUpdate: (tween) => {
+            if (this.highlightGraphics && step.highlight) {
+              this.highlightGraphics.clear();
+              const value = tween.getValue();
+              const alpha = 0.5 + (value || 0) * 0.5;
+              const radius = step.highlight.radius + (value || 0) * 15;
+              
+              this.highlightGraphics.lineStyle(5, 0x00FF00, alpha);
+              this.highlightGraphics.strokeCircle(step.highlight.x, step.highlight.y, radius);
+              
+              this.highlightGraphics.lineStyle(3, 0xFFFF00, alpha * 0.6);
+              this.highlightGraphics.strokeCircle(step.highlight.x, step.highlight.y, radius + 10);
+            }
+          }
+        });
+
+        this.events.once('nextStep', () => {
+          pulse.remove();
+        });
       }
     }
 
@@ -474,31 +673,101 @@ export class TutorialScene extends Phaser.Scene {
     
     const step = this.tutorialSteps[this.tutorialStepIndex];
     if (step && step.condition && step.condition()) {
-      this.time.delayedCall(500, () => this.nextTutorialStep());
+      if (!this.awaitingCondition) {
+        this.awaitingCondition = true;
+        this.conditionMetTime = this.time.now;
+      } else if (this.time.now - this.conditionMetTime > 1000) {
+        this.awaitingCondition = false;
+        this.nextTutorialStep();
+      }
+    } else {
+      this.awaitingCondition = false;
     }
   }
 
   private nextTutorialStep(): void {
+    this.events.emit('nextStep');
+    this.awaitingCondition = false;
     this.tutorialStepIndex++;
     this.showTutorialStep(this.tutorialStepIndex);
   }
 
   private completeTutorial(): void {
+    if (this.highlightGraphics) {
+      this.highlightGraphics.clear();
+    }
+
     if (this.tutorialTitle) {
       this.tutorialTitle.setText('TUTORIAL COMPLETE');
+      this.tutorialTitle.setColor('#00FF00');
+      
+      this.tweens.add({
+        targets: this.tutorialTitle,
+        scale: { from: 0.5, to: 1.2 },
+        duration: 600,
+        ease: 'Back.easeOut',
+        yoyo: true,
+        repeat: 0
+      });
     }
+
     if (this.tutorialText) {
-      this.tutorialText.setText('You\'re ready to save your team. Return to the main menu to start the real mission.');
+      this.tutorialText.setText('You are ready to save your team!\n\nReturn to the main menu to start the REAL mission.\nGood luck developer. They are counting on you.');
+      this.tutorialText.setLineSpacing(6); 
+      this.tutorialText.setFontSize('12px'); 
     }
 
     if (this.continueButton) {
       const btnText = this.continueButton.getAt(1) as Phaser.GameObjects.Text;
-      btnText.setText('EXIT');
+      const btnBg = this.continueButton.getAt(0) as Phaser.GameObjects.Graphics;
+      
+      btnText.setText('EXIT TO MENU');
+      btnText.setFontSize('10px'); 
+      btnBg.clear();
+      btnBg.fillStyle(0xFF0000, 1);
+      btnBg.fillRoundedRect(-85, -18, 170, 36, 8); 
+      btnBg.lineStyle(2, 0xFFFFFF, 0.8);
+      btnBg.strokeRoundedRect(-85, -18, 170, 36, 8);
+      
       this.continueButton.setVisible(true);
       this.continueButton.removeAllListeners('pointerdown');
+      this.continueButton.removeAllListeners('pointerover');
+      this.continueButton.removeAllListeners('pointerout');
+      
+      this.continueButton.setInteractive(
+        new Phaser.Geom.Rectangle(-85, -18, 170, 36),
+        Phaser.Geom.Rectangle.Contains
+      );
+      
+      this.continueButton.on('pointerover', () => {
+        btnBg.clear();
+        btnBg.fillStyle(0xFF3333, 1);
+        btnBg.fillRoundedRect(-85, -18, 170, 36, 8);
+        btnBg.lineStyle(3, 0xFFFFFF, 1);
+        btnBg.strokeRoundedRect(-85, -18, 170, 36, 8);
+        btnText.setScale(1.05);
+      });
+      
+      this.continueButton.on('pointerout', () => {
+        btnBg.clear();
+        btnBg.fillStyle(0xFF0000, 1);
+        btnBg.fillRoundedRect(-85, -18, 170, 36, 8);
+        btnBg.lineStyle(2, 0xFFFFFF, 0.8);
+        btnBg.strokeRoundedRect(-85, -18, 170, 36, 8);
+        btnText.setScale(1.0);
+      });
+      
       this.continueButton.on('pointerdown', () => {
+        this.scene.start('MenuScene');
+      });
 
-        window.location.reload();
+      this.tweens.add({
+        targets: this.continueButton,
+        y: '+=5',
+        duration: 800,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
       });
     }
   }

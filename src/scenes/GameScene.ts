@@ -5,6 +5,7 @@ import { Task } from '../entities/Task';
 import { TimerSystem } from '../systems/TimerSystem';
 import { TaskSystem } from '../systems/TaskSystem';
 import { SceneTransition } from '../utils/SceneTransition';
+import { SoundManager } from '../utils/SoundManager';
 
 export class GameScene extends Phaser.Scene {
   private characters!: Map<number, Character>;
@@ -23,6 +24,13 @@ export class GameScene extends Phaser.Scene {
   private hasWon: boolean = false;
   private mapZoneSeparators: Phaser.GameObjects.Graphics[] = [];
   private isMinigameActive: boolean = false;
+  private soundManager!: SoundManager;
+  private sprintEnergy: number = 100;
+  private maxSprintEnergy: number = 100;
+  private sprintDrainRate: number = 30;
+  private sprintRegenRate: number = 15;
+  private isSprinting: boolean = false;
+  private shiftKey!: Phaser.Input.Keyboard.Key;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -32,12 +40,32 @@ export class GameScene extends Phaser.Scene {
     this.gameOver = false;
     this.hasWon = false;
     this.completedTasksCount = 0;
+    this.sprintEnergy = 100;
+    this.isSprinting = false;
     
     this.cameras.main.resetFX();
     this.cameras.main.clearAlpha();
     this.cameras.main.setAlpha(1);
     this.cameras.main.setBackgroundColor(0x000000);
   
+    this.sound.stopAll();
+    
+    this.soundManager = new SoundManager(this);
+    
+    const settings = localStorage.getItem(CONFIG.STORAGE.SETTINGS);
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      if (parsed.masterVolume !== undefined) {
+        this.soundManager.setMasterVolume(parsed.masterVolume);
+      }
+      if (parsed.musicVolume !== undefined) {
+        this.soundManager.setMusicVolume(parsed.musicVolume);
+      }
+      if (parsed.sfxVolume !== undefined) {
+        this.soundManager.setSfxVolume(parsed.sfxVolume);
+      }
+    }
+    
     this.loadSettings();
     this.createBackground();
     
@@ -56,6 +84,10 @@ export class GameScene extends Phaser.Scene {
 
     this.events.emit('timersUpdated', this.timerSystem.getAllTimers());
     this.events.emit('characterSwitched', this.activeCharacterId);
+    this.events.emit('sprintEnergyUpdated', {
+      energy: this.sprintEnergy,
+      maxEnergy: this.maxSprintEnergy
+    });
   }
 
   update(_time: number, delta: number): void {
@@ -64,6 +96,7 @@ export class GameScene extends Phaser.Scene {
     this.timerSystem.update(delta, this.activeCharacterId);
 
     this.updateCharacterMovement(delta);
+    this.updateSprint(delta);
     this.checkTaskProximity();
 
     this.events.emit('timersUpdated', this.timerSystem.getAllTimers());
@@ -190,6 +223,7 @@ export class GameScene extends Phaser.Scene {
   private setupInput(): void {
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasdKeys = this.input.keyboard!.addKeys('W,A,S,D') as any;
+    this.shiftKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.numberKeys = new Map();
     this.numberKeys.set(1, this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ONE));
     this.numberKeys.set(2, this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TWO));
@@ -213,7 +247,7 @@ export class GameScene extends Phaser.Scene {
 
     this.numberKeys.forEach((key, charId) => {
       key.on('down', () => {
-        if (!this.gameOver) {
+        if (!this.gameOver && !this.isMinigameActive) {
           this.setActiveCharacter(charId);
         }
       });
@@ -250,9 +284,33 @@ export class GameScene extends Phaser.Scene {
       velocityX *= 0.707;
       velocityY *= 0.707;
     }
+
+    const isMoving = velocityX !== 0 || velocityY !== 0;
+    if (isMoving && this.shiftKey.isDown && this.sprintEnergy > 0) {
+      this.isSprinting = true;
+      velocityX *= 1.8;
+      velocityY *= 1.8;
+    } else {
+      this.isSprinting = false;
+    }
     
     activeChar.setVelocity(velocityX, velocityY);
     activeChar.update(delta);
+  }
+
+  private updateSprint(delta: number): void {
+    const deltaSeconds = delta / 1000;
+
+    if (this.isSprinting && this.sprintEnergy > 0) {
+      this.sprintEnergy = Math.max(0, this.sprintEnergy - this.sprintDrainRate * deltaSeconds);
+    } else if (this.sprintEnergy < this.maxSprintEnergy) {
+      this.sprintEnergy = Math.min(this.maxSprintEnergy, this.sprintEnergy + this.sprintRegenRate * deltaSeconds);
+    }
+
+    this.events.emit('sprintEnergyUpdated', {
+      energy: this.sprintEnergy,
+      maxEnergy: this.maxSprintEnergy
+    });
   }
 
   private checkTaskProximity(): void {
@@ -335,6 +393,8 @@ export class GameScene extends Phaser.Scene {
         this.timerSystem.resetTimer(characterId);
       }
 
+      this.soundManager.play('swipe-success');
+
       this.events.emit('taskCompleted', { taskId, characterId });
       
       this.cameras.main.flash(150, 0, 50, 0, false);
@@ -353,8 +413,8 @@ export class GameScene extends Phaser.Scene {
     this.characters.forEach((char, id) => {
       char.setCharacterActive(id === charId);
     });
-    
-    this.createCharacterSwitchGlitch();
+
+    this.soundManager.play('character-switch');    this.createCharacterSwitchGlitch();
    
     this.updateCameraForActiveCharacter();
     
@@ -497,6 +557,8 @@ export class GameScene extends Phaser.Scene {
     
     this.gameOver = true;
 
+    this.soundManager.play('game-over');
+
     this.characters.forEach(char => {
       char.setVelocity(0, 0);
     });
@@ -526,21 +588,6 @@ export class GameScene extends Phaser.Scene {
     });
     
     this.cameras.main.flash(500, 255, 215, 0, false);
-    
-    this.characters.forEach(char => {
-      for (let i = 0; i < 3; i++) {
-        this.time.delayedCall(i * 200, () => {
-          this.createVictoryParticles(char.x, char.y);
-        });
-      }
-    });
-
-    this.tweens.add({
-      targets: this.cameras.main,
-      zoom: 0.9,
-      duration: 1000,
-      ease: 'Sine.easeInOut'
-    });
 
     this.events.emit('victory', {
       tasksCompleted: this.completedTasksCount,
@@ -557,24 +604,6 @@ export class GameScene extends Phaser.Scene {
           timeRemaining: this.timerSystem.getAllTimers()
         });
       });
-    });
-  }
-
-  private createVictoryParticles(x: number, y: number): void {
-    const particles = this.add.particles(x, y, 'task', {
-      speed: { min: 100, max: 200 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 1, end: 0 },
-      alpha: { start: 1, end: 0 },
-      lifespan: 1000,
-      gravityY: -50,
-      quantity: 30,
-      blendMode: 'ADD',
-      tint: [0x00CED1, 0xFF8C00, 0xFF00FF, 0xFFD700]
-    });
-    
-    this.time.delayedCall(2000, () => {
-      particles.destroy();
     });
   }
 
@@ -601,5 +630,11 @@ export class GameScene extends Phaser.Scene {
       assistMode: this.assistMode
     };
     localStorage.setItem(CONFIG.STORAGE.SETTINGS, JSON.stringify(settings));
+  }
+
+  shutdown(): void {
+    if (this.soundManager) {
+      this.soundManager.destroy();
+    }
   }
 }

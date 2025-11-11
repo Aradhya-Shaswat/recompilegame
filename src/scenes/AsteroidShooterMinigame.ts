@@ -1,6 +1,7 @@
 
 import Phaser from 'phaser';
 import { MinigameScene } from './MinigameScene';
+import { SoundManager } from '../utils/SoundManager';
 
 export class AsteroidShooterMinigame extends MinigameScene {
   
@@ -15,6 +16,7 @@ export class AsteroidShooterMinigame extends MinigameScene {
   private mousey: number = 0;
   private canshoot: boolean = true;
   private shootdelay: number = 300;
+  private soundManager!: SoundManager;
 
   constructor() {
     super({ key: 'AsteroidShooterMinigame' });
@@ -26,6 +28,8 @@ export class AsteroidShooterMinigame extends MinigameScene {
     this.score = 0;
     this.asteroids = [];
     this.canshoot = true;
+    
+    this.soundManager = new SoundManager(this);
   }
 
   protected getMinigameTitle(): string {
@@ -102,8 +106,10 @@ export class AsteroidShooterMinigame extends MinigameScene {
 
   private makeasteroid(): void {
     const width = 600;
-    const x = Phaser.Math.Between(50, width - 50);
-    const y = Phaser.Math.Between(160, 350);
+    const height = 500;
+    const margin = 50;
+    const x = Phaser.Math.Between(margin, width - margin);
+    const y = Phaser.Math.Between(160 + margin, height - margin);
     const size = Phaser.Math.FloatBetween(0.15, 0.35); 
     
     
@@ -123,6 +129,7 @@ export class AsteroidShooterMinigame extends MinigameScene {
       this.canshoot = true;
     });
 
+    this.soundManager.play('laser-shoot');
     
     const flash = this.add.circle(x, y, 15, 0xffff00, 0.8);
     this.minigameContainer.add(flash);
@@ -141,6 +148,7 @@ export class AsteroidShooterMinigame extends MinigameScene {
       const hitRadius = (asteroid.displayWidth / 2) * 0.8; 
       
       if (distance < hitRadius) {
+        this.soundManager.play('asteroid-explosion');
         
         const explosion = this.add.circle(asteroid.x, asteroid.y, asteroid.displayWidth / 2, 0xff6600, 0.8);
         this.minigameContainer.add(explosion);

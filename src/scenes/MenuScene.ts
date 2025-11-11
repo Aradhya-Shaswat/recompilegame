@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
 import { SceneTransition } from '../utils/SceneTransition';
+import { SoundManager } from '../utils/SoundManager';
 
 interface MatrixColumn {
   x: number;
@@ -15,6 +16,7 @@ export class MenuScene extends Phaser.Scene {
   private matrixContainer?: Phaser.GameObjects.Container;
   private glitchOverlay?: Phaser.GameObjects.Graphics;
   private readonly MATRIX_CHARS = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+  private soundManager!: SoundManager;
   
   constructor() {
     super({ key: 'MenuScene' });
@@ -23,6 +25,26 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     const width = CONFIG.GAME_WIDTH;
     const height = CONFIG.GAME_HEIGHT;
+
+    this.sound.stopAll();
+    
+    this.soundManager = new SoundManager(this);
+    
+    const settings = localStorage.getItem(CONFIG.STORAGE.SETTINGS);
+    if (settings) {
+      const parsed = JSON.parse(settings);
+      if (parsed.masterVolume !== undefined) {
+        this.soundManager.setMasterVolume(parsed.masterVolume);
+      }
+      if (parsed.musicVolume !== undefined) {
+        this.soundManager.setMusicVolume(parsed.musicVolume);
+      }
+      if (parsed.sfxVolume !== undefined) {
+        this.soundManager.setSfxVolume(parsed.sfxVolume);
+      }
+    }
+    
+    this.soundManager.playMusic('menu-music', 2000);
 
     if (this.scene.isActive('UIScene')) {
       this.scene.stop('UIScene');
@@ -88,7 +110,7 @@ export class MenuScene extends Phaser.Scene {
     });
     instructions.setOrigin(0.5, 0.5);
 
-    const version = this.add.text(20, height - 20, 'v1.0.0', {
+    const version = this.add.text(20, height - 20, 'v2.0.0', {
       fontSize: '14px',
       color: '#555555'
     });
@@ -105,8 +127,9 @@ export class MenuScene extends Phaser.Scene {
     bg.strokeRoundedRect(-120, -30, 240, 60, 10);
     
     const label = this.add.text(0, 0, text, {
-      fontSize: '28px',
+      fontSize: '20px',
       color: '#ffffff',
+      fontFamily: '"Press Start 2P", monospace',
       fontStyle: 'bold'
     });
     label.setOrigin(0.5, 0.5);
@@ -122,6 +145,8 @@ export class MenuScene extends Phaser.Scene {
       bg.lineStyle(3, 0x00CED1, 1);
       bg.strokeRoundedRect(-120, -30, 240, 60, 10);
       label.setScale(1.05);
+      
+      this.soundManager.play('menu-hover');
     });
     
     container.on('pointerout', () => {
@@ -133,7 +158,10 @@ export class MenuScene extends Phaser.Scene {
       label.setScale(1.0);
     });
     
-    container.on('pointerdown', onClick);
+    container.on('pointerdown', () => {
+      this.soundManager.play('menu-click');
+      onClick();
+    });
     
     return container;
   }
@@ -334,6 +362,12 @@ export class MenuScene extends Phaser.Scene {
       const glitchX = Phaser.Math.Between(0, width);
       this.glitchOverlay.fillStyle(0x00ffff, 0.15);
       this.glitchOverlay.fillRect(glitchX, 0, 2, height);
+    }
+  }
+
+  shutdown(): void {
+    if (this.soundManager) {
+      this.soundManager.destroy();
     }
   }
 }

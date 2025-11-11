@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
+import { SoundManager } from '../utils/SoundManager';
 
 export class EndCreditsScene extends Phaser.Scene {
   private creditsText: Phaser.GameObjects.Text[] = [];
@@ -9,6 +10,7 @@ export class EndCreditsScene extends Phaser.Scene {
   private glitchTimer?: Phaser.Time.TimerEvent;
   private glitchGraphics?: Phaser.GameObjects.Graphics;
   private gameData?: { tasksCompleted: number; timeRemaining: any };
+  private soundManager!: SoundManager;
 
   constructor() {
     super({ key: 'EndCreditsScene' });
@@ -19,10 +21,11 @@ export class EndCreditsScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.soundManager = new SoundManager(this);
+
     const width = CONFIG.GAME_WIDTH;
     const height = CONFIG.GAME_HEIGHT;
 
-    
     this.cameras.main.setBackgroundColor(0x0a0a0a);
 
     
@@ -151,7 +154,7 @@ export class EndCreditsScene extends Phaser.Scene {
       { text: 'Code Warriors 42', size: '32px', color: '#00ffff', spacing: 80 },
       
       { text: '', spacing: 30 },
-      { text: 'Game Design & Concept', size: '28px', color: '#FF8C00', spacing: 40 },
+      { text: 'Game Design', size: '28px', color: '#FF8C00', spacing: 40 },
       { text: 'Aditya Verma', size: '24px', color: '#ffffff', spacing: 80 },
       
       { text: '', spacing: 30 },
@@ -196,14 +199,14 @@ export class EndCreditsScene extends Phaser.Scene {
   }
 
   private setupInput(): void {
-    
     const escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     escKey.on('down', () => {
+      this.soundManager.play('menu-click');
       this.skipCredits();
     });
 
-    
     this.input.on('pointerdown', () => {
+      this.soundManager.play('menu-click');
       this.skipCredits();
     });
 

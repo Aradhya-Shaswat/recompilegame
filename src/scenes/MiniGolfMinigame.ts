@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MinigameScene } from './MinigameScene';
+import { SoundManager } from '../utils/SoundManager';
 
 export class MiniGolfMinigame extends MinigameScene {
   private ball?: Phaser.GameObjects.Arc;
@@ -14,12 +15,16 @@ export class MiniGolfMinigame extends MinigameScene {
   private shots: number = 0;
   private maxShots: number = 5;
   private statusText?: Phaser.GameObjects.Text;
-  private obstacles: Phaser.GameObjects.Rectangle[] = [];
   private mouseX: number = 0;
   private mouseY: number = 0;
   private powerText?: Phaser.GameObjects.Text;
   private maxPower: number = 100;
   private powerScrollSpeed: number = 5;
+  private soundManager!: SoundManager;
+  private tutorialHand?: Phaser.GameObjects.Graphics;
+  private tutorialArrow?: Phaser.GameObjects.Graphics;
+  private tutorialActive: boolean = false;
+  private hasPlayedGolf: boolean = false;
 
   constructor() {
     super({ key: 'MiniGolfMinigame' });
@@ -27,14 +32,22 @@ export class MiniGolfMinigame extends MinigameScene {
 
   init(data: any): void {
     super.init(data);
+    this.soundManager = new SoundManager(this);
     this.power = 0;
     this.isAiming = false;
     this.velocityX = 0;
     this.velocityY = 0;
     this.shots = 0;
-    this.obstacles = [];
     this.mouseX = 0;
     this.mouseY = 0;
+
+    const isTutorialScene = this.gameScene.scene.key === 'TutorialScene';
+    const golfPlayed = localStorage.getItem('tripoint_golf_played');
+    this.hasPlayedGolf = golfPlayed === 'true';
+    
+    if (!this.hasPlayedGolf || isTutorialScene) {
+      this.tutorialActive = true;
+    }
   }
 
   protected getMinigameTitle(): string {
@@ -78,12 +91,6 @@ export class MiniGolfMinigame extends MinigameScene {
     this.ball = this.add.circle(centerX, 400, 10, 0xffffff);
     this.ball.setStrokeStyle(2, 0x000000);
 
-    const obstacle1 = this.add.rectangle(centerX - 100, 280, 80, 15, 0x8B4513);
-    obstacle1.setStrokeStyle(2, 0x654321);
-    const obstacle2 = this.add.rectangle(centerX + 100, 320, 80, 15, 0x8B4513);
-    obstacle2.setStrokeStyle(2, 0x654321);
-    this.obstacles.push(obstacle1, obstacle2);
-
     this.aimLine = this.add.line(0, 0, 0, 0, 0, 0, 0xffffff);
     this.aimLine.setLineWidth(3);
     this.aimLine.setAlpha(0);
@@ -111,7 +118,7 @@ export class MiniGolfMinigame extends MinigameScene {
 
     this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gameObjects: any, _deltaX: number, deltaY: number) => {
       if (this.isAiming) {
-        this.power -= Math.sign(deltaY) * this.powerScrollSpeed;
+        this.power += Math.sign(deltaY) * this.powerScrollSpeed;
         this.power = Phaser.Math.Clamp(this.power, 0, this.maxPower);
       }
     });
@@ -123,6 +130,7 @@ export class MiniGolfMinigame extends MinigameScene {
 
         const distToBall = Phaser.Math.Distance.Between(localX, localY, this.ball.x, this.ball.y);
         if (distToBall < 50) {
+          this.removeTutorial();
           this.isAiming = true;
           this.power = 0; 
         }
@@ -142,7 +150,11 @@ export class MiniGolfMinigame extends MinigameScene {
       loop: true
     });
 
-    this.minigameContainer.add([instructions, this.statusText, this.powerText, this.hole, obstacle1, obstacle2, this.aimLine, this.ball, powerBarBg, this.powerBar, this.crosshair]);
+    this.minigameContainer.add([instructions, this.statusText, this.powerText, this.hole, this.aimLine, this.ball, powerBarBg, this.powerBar, this.crosshair]);
+
+    if (this.tutorialActive) {
+      this.createTutorialAnimation(centerX);
+    }
   }
 
   private updateGame(): void {
@@ -214,31 +226,6 @@ export class MiniGolfMinigame extends MinigameScene {
       this.velocityY *= -0.8;
     }
 
-    this.obstacles.forEach(obstacle => {
-      const bounds = obstacle.getBounds();
-      const ballRadius = 10;
-
-      const closestX = Math.max(bounds.left, Math.min(this.ball!.x, bounds.right));
-      const closestY = Math.max(bounds.top, Math.min(this.ball!.y, bounds.bottom));
-      
-      const distanceX = this.ball!.x - closestX;
-      const distanceY = this.ball!.y - closestY;
-      const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
-      
-      if (distance < ballRadius) {
-        const overlapX = Math.abs(this.ball!.x - closestX);
-        const overlapY = Math.abs(this.ball!.y - closestY);
-        
-        if (overlapX > overlapY) {
-          this.velocityX *= -0.7;
-          this.ball!.x = this.ball!.x < closestX ? bounds.left - ballRadius : bounds.right + ballRadius;
-        } else {
-          this.velocityY *= -0.7;
-          this.ball!.y = this.ball!.y < closestY ? bounds.top - ballRadius : bounds.bottom + ballRadius;
-        }
-      }
-    });
-
     const distance = Phaser.Math.Distance.Between(
       this.ball.x, this.ball.y,
       this.hole.x, this.hole.y
@@ -256,9 +243,17 @@ export class MiniGolfMinigame extends MinigameScene {
 
     this.isAiming = false;
     this.shots++;
+    
+    this.soundManager.play('golf-hit');
 
     if (this.statusText) {
       this.statusText.setText(`Shots: ${this.shots}/${this.maxShots}`);
+    }
+
+    if (this.shots === 3 && !this.tutorialActive && !this.hasPlayedGolf) {
+      const containerWidth = 600;
+      const centerX = containerWidth / 2;
+      this.showTutorialAgain(centerX);
     }
 
     const angle = Phaser.Math.Angle.Between(
@@ -286,8 +281,10 @@ export class MiniGolfMinigame extends MinigameScene {
   }
 
   private handleSuccess(): void {
+    localStorage.setItem('tripoint_golf_played', 'true');
+
     if (this.statusText) {
-      this.statusText.setText('HOLE IN ONE!');
+      this.statusText.setText("That's a Shot!!");
       this.statusText.setColor('#00ff00');
     }
 
@@ -295,6 +292,8 @@ export class MiniGolfMinigame extends MinigameScene {
   }
 
   private handleFailure(): void {
+    this.soundManager.play('swipe-fail');
+    
     if (this.statusText) {
       this.statusText.setText('Out of shots!');
       this.statusText.setColor('#ff0000');
@@ -303,5 +302,70 @@ export class MiniGolfMinigame extends MinigameScene {
     this.time.delayedCall(1000, () => {
       this.closeMinigame(false);
     });
+  }
+
+  private createTutorialAnimation(centerX: number): void {
+    const ballY = 400;
+    
+    this.tutorialHand = this.add.graphics();
+    this.tutorialHand.setAlpha(0.7);
+    
+    this.tutorialHand.fillStyle(0xffffff, 1);
+    this.tutorialHand.fillCircle(centerX, ballY, 8);
+    this.tutorialHand.fillStyle(0xffffff, 1);
+    this.tutorialHand.fillCircle(centerX - 6, ballY + 10, 5);
+    this.tutorialHand.fillCircle(centerX + 6, ballY + 10, 5);
+    this.tutorialHand.fillCircle(centerX - 12, ballY + 8, 4);
+    this.tutorialHand.fillCircle(centerX + 12, ballY + 8, 4);
+    this.tutorialHand.lineStyle(3, 0xffffff, 1);
+    this.tutorialHand.strokeCircle(centerX, ballY, 12);
+
+    this.tutorialArrow = this.add.graphics();
+    this.tutorialArrow.setAlpha(0.7);
+    this.tutorialArrow.lineStyle(3, 0xffff00, 1);
+    this.tutorialArrow.beginPath();
+    this.tutorialArrow.moveTo(centerX, ballY);
+    this.tutorialArrow.lineTo(centerX, ballY - 80);
+    this.tutorialArrow.strokePath();
+    
+    this.tutorialArrow.fillStyle(0xffff00, 1);
+    this.tutorialArrow.fillTriangle(
+      centerX, ballY - 80,
+      centerX - 8, ballY - 65,
+      centerX + 8, ballY - 65
+    );
+
+    this.minigameContainer.add([this.tutorialHand, this.tutorialArrow]);
+
+    this.tweens.add({
+      targets: [this.tutorialHand, this.tutorialArrow],
+      y: '-=10',
+      duration: 800,
+      ease: 'Sine.inOut',
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  private removeTutorial(): void {
+    if (this.tutorialActive) {
+      this.tutorialActive = false;
+      
+      if (this.tutorialHand) {
+        this.tweens.killTweensOf(this.tutorialHand);
+        this.tutorialHand.destroy();
+        this.tutorialHand = undefined;
+      }
+      if (this.tutorialArrow) {
+        this.tweens.killTweensOf(this.tutorialArrow);
+        this.tutorialArrow.destroy();
+        this.tutorialArrow = undefined;
+      }
+    }
+  }
+
+  private showTutorialAgain(centerX: number): void {
+    this.tutorialActive = true;
+    this.createTutorialAnimation(centerX);
   }
 }

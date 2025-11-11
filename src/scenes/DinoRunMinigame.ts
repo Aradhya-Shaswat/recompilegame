@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MinigameScene } from './MinigameScene';
+import { SoundManager } from '../utils/SoundManager';
 
 export class DinoRunMinigame extends MinigameScene {
   
@@ -22,6 +23,7 @@ export class DinoRunMinigame extends MinigameScene {
   private spawnTimer: number = 0;
   private spawnInterval: number = 1.5; 
   private isGameOver: boolean = false;
+  private soundManager!: SoundManager;
 
   constructor() {
     super({ key: 'DinoRunMinigame' });
@@ -37,6 +39,8 @@ export class DinoRunMinigame extends MinigameScene {
     this.spawnTimer = 0;
     this.isGameOver = false;
     this.gameSpeed = 300;
+    
+    this.soundManager = new SoundManager(this);
   }
 
   protected getMinigameTitle(): string {
@@ -67,7 +71,7 @@ export class DinoRunMinigame extends MinigameScene {
     
     this.ground = this.add.graphics();
     this.ground.lineStyle(3, 0x00CED1, 1);
-    this.ground.lineBetween(50, this.groundY, containerWidth - 50, this.groundY);
+    this.ground.lineBetween(0, this.groundY, containerWidth, this.groundY);
 
     
     this.playerY = this.groundY - 20;
@@ -97,6 +101,8 @@ export class DinoRunMinigame extends MinigameScene {
     if (!this.isJumping && this.player) {
       this.isJumping = true;
       this.velocityY = this.jumpPower;
+      
+      this.soundManager.play('dino-jump');
     }
   }
 
@@ -192,6 +198,7 @@ export class DinoRunMinigame extends MinigameScene {
     
     this.isGameOver = true;
 
+    this.soundManager.play('dino-hit');
     
     if (this.player) {
       this.player.setFillStyle(0xff0000);

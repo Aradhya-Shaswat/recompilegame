@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
+import { SoundManager } from '../utils/SoundManager';
 
 export class SettingsScene extends Phaser.Scene {
   private assistModeEnabled: boolean = false;
   private masterVolume: number = 0.7;
+  private musicVolume: number = 1.0;
   private sfxVolume: number = 0.8;
-  private returnTo: string = 'MenuScene'; 
+  private returnTo: string = 'MenuScene';
+  private soundManager!: SoundManager;
 
   constructor() {
     super({ key: 'SettingsScene' });
@@ -17,6 +20,12 @@ export class SettingsScene extends Phaser.Scene {
 
   create(): void {
     this.loadSettings();
+    
+    this.soundManager = new SoundManager(this);
+    
+    this.soundManager.setMasterVolume(this.masterVolume);
+    this.soundManager.setMusicVolume(this.musicVolume);
+    this.soundManager.setSfxVolume(this.sfxVolume);
     
     const width = CONFIG.GAME_WIDTH;
     const height = CONFIG.GAME_HEIGHT;
@@ -45,28 +54,42 @@ export class SettingsScene extends Phaser.Scene {
 
     this.createSlider(
       width / 2,
-      300,
+      280,
       'Master Volume',
       this.masterVolume,
       (value) => {
         this.masterVolume = value;
+        this.soundManager.setMasterVolume(value);
         this.saveSettings();
       }
     );
 
     this.createSlider(
       width / 2,
-      400,
-      'SFX Volume',
-      this.sfxVolume,
+      360,
+      'Music Volume',
+      this.musicVolume,
       (value) => {
-        this.sfxVolume = value;
+        this.musicVolume = value;
+        this.soundManager.setMusicVolume(value);
         this.saveSettings();
       }
     );
 
-    const info = this.add.text(width / 2, 500, 
-      'Assist Mode: Increases all timers from 25s to 35s\n' +
+    this.createSlider(
+      width / 2,
+      440,
+      'SFX Volume',
+      this.sfxVolume,
+      (value) => {
+        this.sfxVolume = value;
+        this.soundManager.setSfxVolume(value);
+        this.saveSettings();
+      }
+    );
+
+    const info = this.add.text(width / 2, 540, 
+      'Assist Mode: Increases all timers from 35s to 50s\n' +
       'Changes take effect on next game start', {
       fontSize: '16px',
       color: '#888888',
@@ -86,6 +109,7 @@ export class SettingsScene extends Phaser.Scene {
     resetBtn.setOrigin(0.5, 0.5);
     resetBtn.setInteractive({ useHandCursor: true });
     resetBtn.on('pointerdown', () => {
+      this.soundManager.play('menu-click');
       this.resetSettings();
       this.scene.restart();
     });
@@ -192,6 +216,8 @@ export class SettingsScene extends Phaser.Scene {
     });
     
     backBtn.on('pointerdown', () => {
+      this.soundManager.play('menu-click');
+      
       if (this.returnTo === 'PauseMenu') {
         this.scene.stop();
         this.scene.launch('PauseMenu');
@@ -207,6 +233,7 @@ export class SettingsScene extends Phaser.Scene {
       const parsed = JSON.parse(settings);
       this.assistModeEnabled = parsed.assistMode || false;
       this.masterVolume = parsed.masterVolume ?? CONFIG.AUDIO.MASTER_VOLUME;
+      this.musicVolume = parsed.musicVolume ?? 1.0;
       this.sfxVolume = parsed.sfxVolume ?? CONFIG.AUDIO.SFX_VOLUME;
     }
   }
@@ -215,6 +242,7 @@ export class SettingsScene extends Phaser.Scene {
     const settings = {
       assistMode: this.assistModeEnabled,
       masterVolume: this.masterVolume,
+      musicVolume: this.musicVolume,
       sfxVolume: this.sfxVolume
     };
     localStorage.setItem(CONFIG.STORAGE.SETTINGS, JSON.stringify(settings));
@@ -223,7 +251,14 @@ export class SettingsScene extends Phaser.Scene {
   private resetSettings(): void {
     this.assistModeEnabled = false;
     this.masterVolume = CONFIG.AUDIO.MASTER_VOLUME;
+    this.musicVolume = 1.0;
     this.sfxVolume = CONFIG.AUDIO.SFX_VOLUME;
     this.saveSettings();
+  }
+
+  shutdown(): void {
+    if (this.soundManager) {
+      this.soundManager.destroy();
+    }
   }
 }

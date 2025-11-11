@@ -1,6 +1,7 @@
 
 import Phaser from 'phaser';
 import { MinigameScene } from './MinigameScene';
+import { SoundManager } from '../utils/SoundManager';
 
 export class TelescopeAlignMinigame extends MinigameScene {
   private outerRing?: Phaser.GameObjects.Graphics;
@@ -8,6 +9,7 @@ export class TelescopeAlignMinigame extends MinigameScene {
   private alignmentIndicators?: Phaser.GameObjects.Graphics;
   private currentRotation: number = 0;
   private targetRotation: number = 0;
+  private targetPointIndex: number = 0;
   private isDragging: boolean = false;
   private lastAngle: number = 0;
   private statusText?: Phaser.GameObjects.Text;
@@ -19,6 +21,8 @@ export class TelescopeAlignMinigame extends MinigameScene {
   private alignmentTime: number = 0;
   private readonly REQUIRED_ALIGNMENT_TIME = 3.0; 
   private readonly MIN_STARTING_OFFSET = 0.8;
+  private soundManager!: SoundManager;
+  private isPlayingAlignmentSound: boolean = false;
 
   constructor() {
     super({ key: 'TelescopeAlignMinigame' });
@@ -27,16 +31,18 @@ export class TelescopeAlignMinigame extends MinigameScene {
   init(data: any): void {
     super.init(data);
     
-    this.targetRotation = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    this.soundManager = new SoundManager(this);
+    this.isPlayingAlignmentSound = false;
+    
+    this.targetPointIndex = Phaser.Math.Between(0, 3);
+    this.targetRotation = (this.targetPointIndex * Math.PI / 2);
 
     let startRotation: number;
     let attempts = 0;
     do {
       startRotation = Phaser.Math.FloatBetween(0, Math.PI * 2);
       const diff = this.normalizeAngle(startRotation - this.targetRotation);
-      const quarterTurn = Math.PI / 2;
-      const alignmentOffset = Math.round(diff / quarterTurn) * quarterTurn;
-      const distanceFromAlignment = Math.abs(diff - alignmentOffset);
+      const distanceFromAlignment = Math.abs(diff);
 
       if (distanceFromAlignment >= this.MIN_STARTING_OFFSET || attempts > 20) {
         break;
@@ -59,8 +65,7 @@ export class TelescopeAlignMinigame extends MinigameScene {
     this.centerX = containerWidth / 2;
     this.centerY = 280; 
 
-    
-    const instructions = this.add.text(this.centerX, 100, 'Drag anywhere to rotate the outer ring\nAlign all 4 white marks with green dots', {
+    const instructions = this.add.text(this.centerX, 100, 'Drag anywhere to rotate the outer ring\nAlign the handle with the green dot', {
       fontSize: '16px',
       color: '#ffffff',
       align: 'center',
@@ -99,29 +104,22 @@ export class TelescopeAlignMinigame extends MinigameScene {
 
     this.innerTarget.clear();
     
-    
     this.innerTarget.lineStyle(4, 0x00CED1, 1);
     this.innerTarget.strokeCircle(this.centerX, this.centerY, 80);
-    
     
     this.innerTarget.fillStyle(0x001a1a, 0.5);
     this.innerTarget.fillCircle(this.centerX, this.centerY, 80);
 
+    const angle = this.targetRotation;
+    const x = this.centerX + Math.cos(angle) * 70;
+    const y = this.centerY + Math.sin(angle) * 70;
     
-    for (let i = 0; i < 4; i++) {
-      const angle = this.targetRotation + (i * Math.PI / 2);
-      const x = this.centerX + Math.cos(angle) * 70;
-      const y = this.centerY + Math.sin(angle) * 70;
-      
-      this.innerTarget.fillStyle(0x00ff00, 1);
-      this.innerTarget.fillCircle(x, y, 8);
-      
-      
-      this.innerTarget.fillStyle(0x000000, 1);
-      this.innerTarget.fillCircle(x, y, 3);
-    }
+    this.innerTarget.fillStyle(0x00ff00, 1);
+    this.innerTarget.fillCircle(x, y, 8);
+    
+    this.innerTarget.fillStyle(0x000000, 1);
+    this.innerTarget.fillCircle(x, y, 3);
 
-    
     this.innerTarget.lineStyle(2, 0x00CED1, 0.5);
     this.innerTarget.lineBetween(this.centerX - 20, this.centerY, this.centerX + 20, this.centerY);
     this.innerTarget.lineBetween(this.centerX, this.centerY - 20, this.centerX, this.centerY + 20);
@@ -132,15 +130,12 @@ export class TelescopeAlignMinigame extends MinigameScene {
 
     this.outerRing.clear();
     
-    
     this.outerRing.lineStyle(6, 0xFFAA00, 1);
     this.outerRing.strokeCircle(this.centerX, this.centerY, 120);
-    
     
     this.outerRing.lineStyle(3, 0xFFAA00, 0.5);
     this.outerRing.strokeCircle(this.centerX, this.centerY, 140);
 
-    
     for (let i = 0; i < 4; i++) {
       const angle = this.currentRotation + (i * Math.PI / 2);
       const innerX = this.centerX + Math.cos(angle) * 105;
@@ -148,12 +143,10 @@ export class TelescopeAlignMinigame extends MinigameScene {
       const outerX = this.centerX + Math.cos(angle) * 135;
       const outerY = this.centerY + Math.sin(angle) * 135;
       
-      
       this.outerRing.lineStyle(5, 0xFFFFFF, 1);
       this.outerRing.lineBetween(innerX, innerY, outerX, outerY);
     }
 
-    
     const handleAngle = this.currentRotation;
     const handleX = this.centerX + Math.cos(handleAngle) * 150;
     const handleY = this.centerY + Math.sin(handleAngle) * 150;
@@ -168,24 +161,19 @@ export class TelescopeAlignMinigame extends MinigameScene {
 
     this.alignmentIndicators.clear();
 
-    for (let i = 0; i < 4; i++) {
-      const currentAngle = this.currentRotation + (i * Math.PI / 2);
-      const targetAngle = this.targetRotation + (i * Math.PI / 2);
+    const currentAngle = this.currentRotation;
+    const targetAngle = this.targetRotation;
 
-      const diff = this.normalizeAngle(currentAngle - targetAngle);
+    const diff = this.normalizeAngle(currentAngle - targetAngle);
+    const alignmentError = Math.abs(diff);
+    const isAligned = alignmentError < this.ALIGNMENT_TOLERANCE;
 
-      const quarterTurn = Math.PI / 2;
-      const alignmentOffset = Math.round(diff / quarterTurn) * quarterTurn;
-      const alignmentError = Math.abs(diff - alignmentOffset);
-      const isAligned = alignmentError < this.ALIGNMENT_TOLERANCE;
+    if (isAligned) {
+      const x = this.centerX + Math.cos(targetAngle) * 70;
+      const y = this.centerY + Math.sin(targetAngle) * 70;
 
-      if (isAligned) {
-        const x = this.centerX + Math.cos(targetAngle) * 70;
-        const y = this.centerY + Math.sin(targetAngle) * 70;
-
-        this.alignmentIndicators.fillStyle(0x00ff00, 0.3);
-        this.alignmentIndicators.fillCircle(x, y, 20);
-      }
+      this.alignmentIndicators.fillStyle(0x00ff00, 0.3);
+      this.alignmentIndicators.fillCircle(x, y, 20);
     }
   }
 
@@ -246,6 +234,11 @@ export class TelescopeAlignMinigame extends MinigameScene {
     if (isAligned) {
       this.alignmentTime += delta / 1000;
       
+      if (!this.isPlayingAlignmentSound) {
+        this.soundManager.play('swipe-success');
+        this.isPlayingAlignmentSound = true;
+      }
+      
       if (this.statusText) {
         const progress = Math.min(100, (this.alignmentTime / this.REQUIRED_ALIGNMENT_TIME) * 100);
         this.statusText.setText(`HOLD STEADY!: ${progress.toFixed(0)}%`);
@@ -259,6 +252,7 @@ export class TelescopeAlignMinigame extends MinigameScene {
       }
     } else {
       this.alignmentTime = 0;
+      this.isPlayingAlignmentSound = false;
       
       
       const closestDiff = this.getClosestAlignmentDiff();
@@ -287,31 +281,12 @@ export class TelescopeAlignMinigame extends MinigameScene {
   }
 
   private checkAlignment(): boolean {
-    let alignedCount = 0;
+    const diff = this.normalizeAngle(this.currentRotation - this.targetRotation);
+    const alignmentError = Math.abs(diff);
     
-    for (let i = 0; i < 4; i++) {
-      const currentAngle = this.currentRotation + (i * Math.PI / 2);
-      const targetAngle = this.targetRotation + (i * Math.PI / 2);
+    console.log(`[TELESCOPE] Current: ${(this.currentRotation * 180 / Math.PI).toFixed(1)}°, Target: ${(this.targetRotation * 180 / Math.PI).toFixed(1)}°, Error: ${(alignmentError * 180 / Math.PI).toFixed(1)}°`);
 
-      const diff = this.normalizeAngle(currentAngle - targetAngle);
-
-      const quarterTurn = Math.PI / 2;
-      const alignmentOffset = Math.round(diff / quarterTurn) * quarterTurn;
-      const alignmentError = Math.abs(diff - alignmentOffset);
-      
-      if (alignmentError < this.ALIGNMENT_TOLERANCE) {
-        alignedCount++;
-      }
-    }
-
-    const rotationDiff = this.normalizeAngle(this.currentRotation - this.targetRotation);
-    const quarterTurn = Math.PI / 2;
-    const alignmentOffset = Math.round(rotationDiff / quarterTurn) * quarterTurn;
-    const alignmentError = Math.abs(rotationDiff - alignmentOffset);
-    
-    console.log(`[TELESCOPE] Current: ${(this.currentRotation * 180 / Math.PI).toFixed(1)}°, Target: ${(this.targetRotation * 180 / Math.PI).toFixed(1)}°, Error: ${(alignmentError * 180 / Math.PI).toFixed(1)}°, Aligned: ${alignedCount}/4`);
-
-    return alignedCount === 4;
+    return alignmentError < this.ALIGNMENT_TOLERANCE;
   }
 
   private normalizeAngle(angle: number): number {

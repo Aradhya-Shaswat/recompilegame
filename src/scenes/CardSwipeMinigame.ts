@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MinigameScene } from './MinigameScene';
+import { SoundManager } from '../utils/SoundManager';
 
 export class CardSwipeMinigame extends MinigameScene {
   private card?: Phaser.GameObjects.Rectangle;
@@ -13,7 +14,13 @@ export class CardSwipeMinigame extends MinigameScene {
   private attempts: number = 0;
   private readonly MAX_ATTEMPTS = 5;
   private readonly IDEAL_SPEED_MIN = 80; 
-  private readonly IDEAL_SPEED_MAX = 600; 
+  private readonly IDEAL_SPEED_MAX = 600;
+  private soundManager!: SoundManager;
+  private tutorialHand?: Phaser.GameObjects.Graphics;
+  private tutorialCard?: Phaser.GameObjects.Rectangle;
+  private tutorialCardStripe?: Phaser.GameObjects.Rectangle;
+  private tutorialActive: boolean = false;
+  private hasPlayedCardSwipe: boolean = false;
 
   constructor() {
     super({ key: 'CardSwipeMinigame' });
@@ -26,6 +33,16 @@ export class CardSwipeMinigame extends MinigameScene {
     this.swipeSpeed = 0;
     this.lastX = 0;
     this.lastTime = 0;
+    
+    this.soundManager = new SoundManager(this);
+
+    const isTutorialScene = this.gameScene.scene.key === 'TutorialScene';
+    const cardSwipePlayed = localStorage.getItem('tripoint_cardswipe_played');
+    this.hasPlayedCardSwipe = cardSwipePlayed === 'true';
+    
+    if (!this.hasPlayedCardSwipe || isTutorialScene) {
+      this.tutorialActive = true;
+    }
   }
 
   protected getMinigameTitle(): string {
@@ -77,10 +94,14 @@ export class CardSwipeMinigame extends MinigameScene {
     
     this.input.on('dragstart', (_pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.GameObject) => {
       if (gameObject === this.card && this.card) {
+        this.removeTutorial();
+        
         this.startX = this.card.x;
         this.lastX = this.card.x;
         this.lastTime = Date.now();
         this.swipeSpeed = 0;
+        
+        this.soundManager.play('card-swipe');
       }
     });
 
@@ -133,6 +154,10 @@ export class CardSwipeMinigame extends MinigameScene {
     });
 
     this.minigameContainer.add([this.cardReader, this.card, this.cardStripe, instructions, this.statusText]);
+
+    if (this.tutorialActive) {
+      this.createTutorialAnimation(centerX, centerY);
+    }
   }
 
   private handleSuccess(): void {
@@ -145,6 +170,9 @@ export class CardSwipeMinigame extends MinigameScene {
       this.card.setFillStyle(0x00ff00);
     }
 
+    localStorage.setItem('tripoint_cardswipe_played', 'true');
+
+    this.soundManager.play('swipe-success');
     
     this.time.delayedCall(500, () => {
       this.completeMinigame();
@@ -153,6 +181,8 @@ export class CardSwipeMinigame extends MinigameScene {
 
   private handleFailure(): void {
     this.attempts++;
+
+    this.soundManager.play('swipe-fail');
 
     if (this.card && this.cardStripe) {
       const containerWidth = 600;
@@ -168,6 +198,13 @@ export class CardSwipeMinigame extends MinigameScene {
       });
       
       this.card.setFillStyle(0xffaa00); 
+    }
+
+    if (this.attempts === 3 && !this.tutorialActive) {
+      const containerWidth = 600;
+      const centerX = containerWidth / 2;
+      const centerY = 250;
+      this.showTutorialAgain(centerX, centerY);
     }
 
     if (this.attempts >= this.MAX_ATTEMPTS) {
@@ -206,5 +243,66 @@ export class CardSwipeMinigame extends MinigameScene {
         });
       }
     }
+  }
+
+  private createTutorialAnimation(centerX: number, centerY: number): void {
+    this.tutorialCard = this.add.rectangle(centerX - 200, centerY, 80, 50, 0xffaa00);
+    this.tutorialCard.setStrokeStyle(2, 0x000000);
+    this.tutorialCard.setAlpha(0.6);
+
+    this.tutorialCardStripe = this.add.rectangle(centerX - 200, centerY, 80, 10, 0x000000);
+    this.tutorialCardStripe.setAlpha(0.6);
+
+    this.tutorialHand = this.add.graphics();
+    this.tutorialHand.setAlpha(0.7);
+    
+    const handX = centerX - 200;
+    const handY = centerY;
+    
+    this.tutorialHand.fillStyle(0xffffff, 1);
+    this.tutorialHand.fillCircle(handX, handY, 8);
+    this.tutorialHand.fillStyle(0xffffff, 1);
+    this.tutorialHand.fillCircle(handX - 6, handY + 10, 5);
+    this.tutorialHand.fillCircle(handX + 6, handY + 10, 5);
+    this.tutorialHand.fillCircle(handX - 12, handY + 8, 4);
+    this.tutorialHand.fillCircle(handX + 12, handY + 8, 4);
+    this.tutorialHand.lineStyle(3, 0xffffff, 1);
+    this.tutorialHand.strokeCircle(handX, handY, 12);
+
+    this.minigameContainer.add([this.tutorialCard, this.tutorialCardStripe, this.tutorialHand]);
+
+    this.tweens.add({
+      targets: [this.tutorialCard, this.tutorialCardStripe, this.tutorialHand],
+      x: '+=400',
+      duration: 2000,
+      ease: 'Sine.inOut',
+      yoyo: false,
+      repeat: -1,
+      repeatDelay: 500
+    });
+  }
+
+  private removeTutorial(): void {
+    if (this.tutorialActive) {
+      this.tutorialActive = false;
+      
+      if (this.tutorialCard) {
+        this.tutorialCard.destroy();
+        this.tutorialCard = undefined;
+      }
+      if (this.tutorialCardStripe) {
+        this.tutorialCardStripe.destroy();
+        this.tutorialCardStripe = undefined;
+      }
+      if (this.tutorialHand) {
+        this.tutorialHand.destroy();
+        this.tutorialHand = undefined;
+      }
+    }
+  }
+
+  private showTutorialAgain(centerX: number, centerY: number): void {
+    this.tutorialActive = true;
+    this.createTutorialAnimation(centerX, centerY);
   }
 }

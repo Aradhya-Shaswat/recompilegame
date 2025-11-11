@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MinigameScene } from './MinigameScene';
+import { SoundManager } from '../utils/SoundManager';
 
 interface Wire {
   color: number;
@@ -15,6 +16,7 @@ export class WireMazeMinigame extends MinigameScene {
     wire: Wire;
     line: Phaser.GameObjects.Graphics;
   };
+  private soundManager!: SoundManager;
 
   constructor() {
     super({ key: 'WireMazeMinigame' });
@@ -23,6 +25,7 @@ export class WireMazeMinigame extends MinigameScene {
   init(data: any): void {
     super.init(data);
     
+    this.soundManager = new SoundManager(this);
     this.wires = [];
     this.currentDrag = undefined;
   }
@@ -159,10 +162,13 @@ export class WireMazeMinigame extends MinigameScene {
       wire.connected = true;
       wire.leftNode.disableInteractive();
       
+      this.soundManager.play('swipe-success');
+      
       this.checkCompletion();
     } else {
       
       line.destroy();
+      this.soundManager.play('electric-buzz');
     }
 
     this.currentDrag = undefined;

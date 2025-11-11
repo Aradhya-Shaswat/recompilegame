@@ -82,7 +82,7 @@ export class SceneTransition {
     }
 
     const glitchEvent = scene.time.addEvent({
-      delay: 16, // ~60 FPS
+      delay: 16,
       callback: () => {
         glitchOverlay.clear();
 

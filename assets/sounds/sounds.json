@@ -1,0 +1,274 @@
+{
+  "version": "1.0.0",
+  "description": "Sound effects and music catalog for Tripoint game",
+  "lastUpdated": "2025-11-11",
+  "sounds": {
+    "music": {
+      "menu-music": {
+        "file": "menu-music.mp3",
+        "type": "music",
+        "loop": true,
+        "volume": 0.6,
+        "category": "music",
+        "description": "Background music for menu scenes",
+        "usedIn": ["MenuScene", "SettingsScene", "EndCreditsScene"]
+      },
+      "gameplay-music": {
+        "file": "gameplay-music.mp3",
+        "type": "music",
+        "loop": true,
+        "volume": 0.5,
+        "category": "music",
+        "description": "Background music during gameplay",
+        "usedIn": ["GameScene", "UIScene"]
+      }
+    },
+    "ui": {
+      "menu-click": {
+        "file": "menu-click.mp3",
+        "type": "sfx",
+        "loop": false,
+        "volume": 0.8,
+        "category": "ui",
+        "description": "Button click sound",
+        "usedIn": ["MenuScene", "SettingsScene", "PauseMenu"]
+      },
+      "menu-hover": {
+        "file": "menu-hover.mp3",
+        "type": "sfx",
+        "loop": false,
+        "volume": 0.4,
+        "category": "ui",
+        "description": "Button hover sound",
+        "usedIn": ["MenuScene", "SettingsScene", "PauseMenu"]
+      },
+      "character-switch": {
+        "file": "character-switch.mp3",
+        "type": "sfx",
+        "loop": false,
+        "volume": 0.7,
+        "category": "ui",
+        "description": "Character switch indicator sound",
+        "usedIn": ["GameScene"]
+      }
+    },
+    "minigames": {
+      "asteroid": {
+        "laser-shoot": {
+          "file": "laser-shoot.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.6,
+          "category": "minigame",
+          "description": "Laser shooting sound",
+          "usedIn": ["AsteroidShooterMinigame"]
+        },
+        "asteroid-explosion": {
+          "file": "asteroid-explosion.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.8,
+          "category": "minigame",
+          "description": "Asteroid destruction sound",
+          "usedIn": ["AsteroidShooterMinigame"]
+        }
+      },
+      "card": {
+        "card-swipe": {
+          "file": "card-swipe.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.7,
+          "category": "minigame",
+          "description": "Card swipe motion sound",
+          "usedIn": ["CardSwipeMinigame"]
+        },
+        "swipe-success": {
+          "file": "swipe-success.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.8,
+          "category": "minigame",
+          "description": "Successful card swipe",
+          "usedIn": ["CardSwipeMinigame"]
+        },
+        "swipe-fail": {
+          "file": "swipe-fail.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.7,
+          "category": "minigame",
+          "description": "Failed card swipe",
+          "usedIn": ["CardSwipeMinigame"]
+        }
+      },
+      "golf": {
+        "golf-hit": {
+          "file": "golf-hit.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.8,
+          "category": "minigame",
+          "description": "Golf ball hit sound",
+          "usedIn": ["MiniGolfMinigame"]
+        },
+        "golf-hole": {
+          "file": "golf-hole.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.9,
+          "category": "minigame",
+          "description": "Ball in hole success sound",
+          "usedIn": ["MiniGolfMinigame"]
+        }
+      },
+      "dino": {
+        "dino-jump": {
+          "file": "dino-jump.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.6,
+          "category": "minigame",
+          "description": "Dino jump sound",
+          "usedIn": ["DinoRunMinigame"]
+        },
+        "dino-hit": {
+          "file": "dino-hit.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.8,
+          "category": "minigame",
+          "description": "Dino collision sound",
+          "usedIn": ["DinoRunMinigame"]
+        }
+      },
+      "wire": {
+        "electric-buzz": {
+          "file": "electric-buzz.mp3",
+          "type": "sfx",
+          "loop": false,
+          "volume": 0.7,
+          "category": "minigame",
+          "description": "Wire maze collision buzz",
+          "usedIn": ["WireMazeMinigame"]
+        }
+      }
+    },
+    "gameplay": {
+      "walk": {
+        "file": "walk.mp3",
+        "type": "sfx",
+        "loop": true,
+        "volume": 0.4,
+        "category": "gameplay",
+        "description": "Character walking footsteps",
+        "usedIn": ["GameScene"]
+      }
+    },
+    "system": {
+      "low-time-warning": {
+        "file": "low-time-warning.mp3",
+        "type": "sfx",
+        "loop": true,
+        "volume": 0.6,
+        "category": "system",
+        "description": "Warning sound when timer is low",
+        "usedIn": ["UIScene", "TimerSystem"]
+      },
+      "game-over": {
+        "file": "game-over.mp3",
+        "type": "sfx",
+        "loop": false,
+        "volume": 0.8,
+        "category": "system",
+        "description": "Character timeout/game over sound",
+        "usedIn": ["GameScene", "TimerSystem"]
+      },
+      "glitch": {
+        "file": "glitch.mp3",
+        "type": "sfx",
+        "loop": false,
+        "volume": 0.7,
+        "category": "system",
+        "description": "Error or fail state sound",
+        "usedIn": ["MinigameScene"]
+      }
+    }
+  },
+  "categories": {
+    "music": {
+      "description": "Background music tracks",
+      "defaultVolume": 0.5,
+      "count": 2
+    },
+    "ui": {
+      "description": "User interface sounds",
+      "defaultVolume": 0.7,
+      "count": 3
+    },
+    "minigame": {
+      "description": "Minigame-specific sound effects",
+      "defaultVolume": 0.7,
+      "count": 9
+    },
+    "gameplay": {
+      "description": "General gameplay sounds",
+      "defaultVolume": 0.5,
+      "count": 1
+    },
+    "system": {
+      "description": "System and event sounds",
+      "defaultVolume": 0.7,
+      "count": 3
+    }
+  },
+  "preloadGroups": {
+    "essential": [
+      "menu-music",
+      "menu-click",
+      "menu-hover",
+      "gameplay-music",
+      "character-switch",
+      "low-time-warning",
+      "game-over"
+    ],
+    "minigames": [
+      "laser-shoot",
+      "asteroid-explosion",
+      "card-swipe",
+      "swipe-success",
+      "swipe-fail",
+      "golf-hit",
+      "golf-hole",
+      "dino-jump",
+      "dino-hit",
+      "electric-buzz"
+    ],
+    "gameplay": [
+      "walk",
+      "glitch"
+    ]
+  },
+  "usage": {
+    "PreloadScene": {
+      "description": "Load all sounds in preload phase",
+      "example": "this.load.audio('menu-music', 'assets/sounds/menu-music.mp3')"
+    },
+    "SoundManager": {
+      "description": "Centralized sound playback management",
+      "features": [
+        "Volume control per category",
+        "Sound pooling for repeated effects",
+        "Fade in/out for music transitions",
+        "Mute/unmute functionality"
+      ]
+    }
+  },
+  "notes": [
+    "All audio files are in MP3 format for broad compatibility",
+    "Looping sounds should be seamlessly loopable",
+    "Volume values are relative to CONFIG.AUDIO settings",
+    "Sound keys match file names without extension",
+    "Consider implementing audio sprite sheets for mobile optimization"
+  ]
+}

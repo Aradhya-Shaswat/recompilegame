@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { CONFIG } from '../config';
+import { SoundManager } from '../utils/SoundManager';
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -24,6 +25,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.on('loaderror', (file: any) => {
       console.warn(`Failed to load: ${file.key}`);
     });
+
+    SoundManager.preloadSounds(this);
     
     this.createTaskTexture();
   }
