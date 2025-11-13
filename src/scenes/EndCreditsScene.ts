@@ -155,7 +155,7 @@ export class EndCreditsScene extends Phaser.Scene {
       
       { text: '', spacing: 30 },
       { text: 'Game Design', size: '28px', color: '#FF8C00', spacing: 40 },
-      { text: 'Aditya Verma', size: '24px', color: '#ffffff', spacing: 80 },
+      { text: 'Avinash Prakash', size: '24px', color: '#ffffff', spacing: 80 },
       
       { text: '', spacing: 30 },
       { text: 'Programming & Development', size: '28px', color: '#FF8C00', spacing: 40 },
@@ -165,20 +165,20 @@ export class EndCreditsScene extends Phaser.Scene {
       { text: 'Minigame Development', size: '18px', color: '#aaaaaa', spacing: 80 },
       
       { text: '', spacing: 30 },
-      { text: 'Art & Animation', size: '28px', color: '#FF8C00', spacing: 40 },
+      { text: 'Art & Animation : Aditya Verma', size: '28px', color: '#FF8C00', spacing: 40 },
       { text: 'Character Sprites: Wraith Series', size: '20px', color: '#ffffff', spacing: 30 },
-      { text: 'Environment Design', size: '20px', color: '#ffffff', spacing: 30 },
-      { text: 'Visual Effects', size: '20px', color: '#ffffff', spacing: 80 },
+      { text: 'Environment Design : Aradhya Shaswat', size: '20px', color: '#ffffff', spacing: 30 },
+      { text: 'Visual Effects : Aditya Verma', size: '20px', color: '#ffffff', spacing: 80 },
       
       { text: '', spacing: 30 },
       { text: 'Audio', size: '28px', color: '#FF8C00', spacing: 40 },
-      { text: 'Sound Design - Coming Soon', size: '20px', color: '#888888', spacing: 30 },
-      { text: 'Music Composition - Coming Soon', size: '20px', color: '#888888', spacing: 80 },
+      { text: 'Sound Design - Unity Asset Library', size: '20px', color: '#888888', spacing: 30 },
+      { text: 'Music Composition - Aradhya Shaswat', size: '20px', color: '#888888', spacing: 80 },
       
       { text: '', spacing: 30 },
       { text: 'Special Thanks', size: '28px', color: '#FF8C00', spacing: 40 },
       { text: 'Phaser Game Framework', size: '20px', color: '#ffffff', spacing: 30 },
-      { text: 'The Open Source Community', size: '20px', color: '#ffffff', spacing: 30 },
+      { text: 'The Among Us Game Community', size: '20px', color: '#ffffff', spacing: 30 },
       { text: 'You, for playing!', size: '20px', color: '#00ffff', spacing: 100 },
       
       { text: '', spacing: 50 },
